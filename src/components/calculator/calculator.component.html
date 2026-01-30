@@ -1,0 +1,141 @@
+<div class="h-full flex flex-col bg-black">
+  <!-- Input Section -->
+  <div class="bg-slate-900 px-3 pt-2 pb-2 border-b border-slate-800 shrink-0">
+    <div class="flex justify-between items-center mb-1.5 px-1 relative">
+      <button (click)="isEditingName.set(true)" class="flex items-center gap-1">
+        <span class="text-slate-400 text-[9px] font-black uppercase">{{ personalShopName() }}</span>
+        <app-edit3-icon [size]="10" class="text-slate-600"></app-edit3-icon>
+      </button>
+      @if (isEditingName()) {
+        <input 
+            #shopNameInput
+            type="text"
+            autofocus
+            class="absolute left-0 top-0 bg-slate-800 border border-amber-500 rounded px-2 py-0.5 text-[10px] outline-none z-30"
+            [value]="personalShopName()" 
+            (blur)="updateShopName(shopNameInput.value)"
+            (keydown.enter)="updateShopName(shopNameInput.value)"
+        />
+      }
+    </div>
+
+    <div class="flex gap-2 mb-2">
+      <div class="flex-1 space-y-1.5">
+        <input 
+            #numRef type="text" inputMode="decimal" placeholder="ဂဏန်း" 
+            class="w-full bg-slate-800 border border-slate-700 py-2 rounded-lg font-black text-center text-base outline-none text-white focus:border-amber-500 transition-colors"
+            [value]="numInput()" (input)="numInput.set($any($event.target).value)"
+        />
+        <input 
+            #amtRef type="text" inputMode="decimal" 
+            [placeholder]="isReverseMode() ? 'ခွဲမည်' : 'ငွေပမာဏ'" 
+            class="w-full bg-slate-800 border py-2 rounded-lg font-black text-center text-base outline-none text-white focus:border-amber-500 transition-all"
+            [class.border-amber-500]="isReverseMode()"
+            [class.bg-amber-900/20]="isReverseMode()"
+            [class.border-slate-700]="!isReverseMode()"
+            [value]="amtInput()" (input)="amtInput.set($any($event.target).value)"
+            (keydown.enter)="addEntry()"
+        />
+      </div>
+      <button (click)="removeLastEntry()" class="w-14 bg-slate-800 text-slate-400 rounded-lg border border-slate-700 flex flex-col items-center justify-center transition-colors active:bg-rose-500/10 active:text-rose-400">
+        <app-eraser-icon [size]="20" class="mb-0.5"></app-eraser-icon>
+        <span class="text-[8px] font-black uppercase">ပြန်ဖျက်</span>
+      </button>
+    </div>
+    
+    <div class="grid grid-cols-5 gap-1">
+      @for (k of modButtons; track k) {
+        @let isActive = activeModButton() === k;
+        <button 
+          (click)="applyMode(k)" 
+          class="py-1.5 rounded-md font-black text-[9px] border transition-colors active:border-amber-500 active:text-amber-400"
+          [class.bg-amber-600]="isActive"
+          [class.border-amber-500]="isActive"
+          [class.text-white]="isActive"
+          [class.bg-slate-800]="!isActive"
+          [class.text-slate-400]="!isActive"
+          [class.border-slate-700]="!isActive"
+          [class.hover:bg-slate-700]="!isActive"
+        >{{ k }}</button>
+      }
+    </div>
+  </div>
+  
+  <div class="bg-slate-950 px-3 py-1 flex flex-wrap gap-1 min-h-[48px] items-center border-b border-slate-900 shrink-0">
+    @if (chips().length > 0) {
+      <div class="w-full flex items-center gap-2">
+        <div class="flex-1 flex flex-wrap gap-1">
+          @for(chip of chips(); track $index) {
+              <span class="text-amber-400 text-[8px] font-black border border-amber-500/20 px-1 rounded bg-amber-500/10">{{chip}}</span>
+          }
+        </div>
+        <button (click)="clearChips()" class="text-[7px] text-slate-600 hover:text-slate-400 font-black uppercase self-start pt-0.5">ရှင်းမည်</button>
+      </div>
+      <div class="w-full flex gap-2 mt-1 items-center">
+        <input 
+          placeholder="Set အမည်ပေးပါ"
+          class="flex-1 bg-slate-800 border border-slate-700 text-xs rounded-md px-2 py-1 outline-none focus:border-amber-500 transition-colors"
+          [value]="newSetName()"
+          (input)="newSetName.set($any($event.target).value)"
+          (keydown.enter)="saveCurrentChipsAsSet()"
+        >
+        <button (click)="saveCurrentChipsAsSet()" class="bg-amber-600 text-white px-2.5 py-1 rounded-md active:bg-amber-700">
+          <app-save-icon [size]="16"></app-save-icon>
+        </button>
+      </div>
+    }
+  </div>
+
+  <div class="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 bg-black pb-40">
+    <!-- Quick Sets -->
+    <div class="mb-4">
+        <h3 class="text-slate-500 font-black text-[10px] uppercase tracking-wider px-1 mb-1">Quick Sets (အမြန်သုံး)</h3>
+        <div class="flex flex-wrap gap-2">
+          @for (set of quickSets(); track set.name) {
+            <div class="relative pt-1 pr-1">
+              <button (click)="loadQuickSet(set)" class="bg-gradient-to-br from-slate-800 to-slate-900 text-slate-300 text-xs font-bold px-3 py-1.5 rounded-lg active:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-colors">
+                {{ set.name }}
+              </button>
+              <button (click)="deleteQuickSet(set.name)" class="absolute -top-0 -right-0 bg-rose-500 rounded-full h-5 w-5 flex items-center justify-center border-2 border-slate-900 hover:scale-110 transition-transform">
+                <app-trash2-icon [size]="10" strokeWidth="3" class="text-white"></app-trash2-icon>
+              </button>
+            </div>
+          }
+        </div>
+    </div>
+    
+    @if (dataList().length === 0) {
+      <div class="h-full flex items-center justify-center opacity-20 flex-col gap-2 pt-10">
+        <app-calculator-icon [size]="36"></app-calculator-icon>
+        <p class="text-[10px] font-black tracking-widest uppercase italic text-center">စာရင်းမရှိသေးပါ</p>
+      </div>
+    } @else {
+        @for (item of dataList(); track item.id) {
+            <div class="flex justify-between items-center bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl">
+            <span class="text-lg font-black text-white">{{ item.n }}</span>
+            <div class="flex items-center gap-4">
+                <span class="text-base font-black text-amber-400">{{ item.a.toLocaleString() }}</span>
+                <button (click)="removeSingleItem(item.id)" class="text-slate-700 hover:text-rose-500 p-1 rounded-full transition-colors">
+                  <app-trash2-icon [size]="16"></app-trash2-icon>
+                </button>
+            </div>
+            </div>
+        }
+    }
+  </div>
+
+  @if (dataList().length > 0) {
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md p-3 flex items-center gap-2 border-t border-slate-800 shadow-2xl z-40 pb-5">
+      <button (click)="clearAllEntries()" class="w-12 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 h-11 flex items-center justify-center active:bg-rose-500/20 transition-colors">
+        <app-trash2-icon [size]="20"></app-trash2-icon>
+      </button>
+      <div class="px-3 min-w-[80px] border-r border-slate-800">
+        <p class="text-[14px] font-black text-amber-400 leading-none">{{ totalAmount().toLocaleString() }}</p>
+        <p class="text-[8px] text-slate-500 font-black mt-1 uppercase tracking-tighter">စုစုပေါင်းပမာဏ</p>
+      </div>
+      <button (click)="copyAndClear()" class="flex-1 bg-amber-600 text-white h-11 rounded-xl font-black text-xs flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-amber-500/20 uppercase transition-transform">
+        <app-copy-icon [size]="14"></app-copy-icon> ကူးယူပြီး အကုန်ရှင်းမည်
+      </button>
+    </div>
+  }
+</div>

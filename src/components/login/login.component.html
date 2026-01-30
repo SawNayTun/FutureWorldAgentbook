@@ -1,0 +1,24 @@
+<div class="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+  <div class="w-full max-w-sm bg-slate-900 border border-slate-800 border-t-4 border-t-amber-500 p-8 rounded-3xl text-center">
+    <app-world-icon class="mx-auto mb-4 text-amber-400" [size]="48"></app-world-icon>
+    <h1 class="text-xl font-black mb-2">{{ shopName() }}</h1>
+    <input 
+      type="text" 
+      placeholder="ကုဒ်ရိုက်ထည့်ပါ"
+      class="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl mb-4 text-center text-white outline-none font-black focus:border-amber-500 transition-colors"
+      [value]="loginInput()"
+      (input)="onInputChange($event)"
+      (keydown.enter)="onLogin()"
+    />
+    <button (click)="onLogin()" class="w-full bg-amber-600 p-4 rounded-xl font-black disabled:bg-slate-700 hover:bg-amber-500 transition-colors" [disabled]="isLoggingIn()">
+      @if (isLoggingIn()) {
+        <span>စစ်ဆေးနေပါသည်...</span>
+      } @else {
+        <span>အကောင့်ဝင်မည်</span>
+      }
+    </button>
+    @if (loginError()) {
+      <p class="text-rose-500 text-xs mt-4">{{ loginError() }}</p>
+    }
+  </div>
+</div>

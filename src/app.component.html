@@ -1,0 +1,59 @@
+
+@switch (appState()) {
+  @case ('initializing') {
+    <div class="h-screen bg-black flex items-center justify-center">
+      <p class="text-white font-black animate-pulse">Loading data...</p>
+    </div>
+  }
+  @case ('error') {
+    <div class="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+      <div class="w-full max-w-sm bg-slate-900 border border-rose-500/30 p-8 rounded-3xl text-center">
+        <h1 class="text-xl font-black mb-1 text-rose-500">Application Error</h1>
+        <p class="text-xs text-slate-400">Could not load data from your browser's storage. Please try again.</p>
+        <button (click)="retry()" class="w-full bg-amber-600 p-3 mt-6 rounded-xl font-black text-sm hover:bg-amber-500 transition-colors">
+          Retry
+        </button>
+      </div>
+    </div>
+  }
+  @case ('login') {
+    <app-login 
+      [shopName]="adminSettings()?.shopName || 'Future World'" 
+      [loginError]="loginError()"
+      [isLoggingIn]="isLoggingIn()"
+      (loginAttempt)="handleLogin($event)"
+      (inputChange)="clearLoginError()">
+    </app-login>
+  }
+  @case ('app') {
+    <div class="h-screen bg-black text-white flex flex-col overflow-hidden select-none">
+      <header class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-2">
+          <app-store-icon [size]="14" class="text-amber-400"></app-store-icon>
+          <span class="text-[10px] font-black uppercase text-slate-200">{{ adminSettings()?.shopName }}</span>
+        </div>
+        <div class="flex gap-4">
+          @if (isAdmin()) {
+            <button (click)="toggleTab()" class="text-amber-400 hover:text-amber-300 transition-colors">
+              @if (activeTab() === 'calc') {
+                <app-users-icon [size]="18"></app-users-icon>
+              } @else {
+                <app-calculator-icon [size]="18"></app-calculator-icon>
+              }
+            </button>
+          }
+          <button (click)="handleLogout()" class="text-rose-500 hover:text-rose-400 transition-colors">
+            <app-logout-icon [size]="18"></app-logout-icon>
+          </button>
+        </div>
+      </header>
+      <main class="flex-1 overflow-hidden">
+        @if (activeTab() === 'admin' && isAdmin()) {
+          <app-admin-panel></app-admin-panel>
+        } @else {
+          <app-calculator [defaultShopName]="adminSettings()?.shopName || 'Future World'"></app-calculator>
+        }
+      </main>
+    </div>
+  }
+}

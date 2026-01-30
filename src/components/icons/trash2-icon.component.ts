@@ -1,0 +1,28 @@
+
+import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { IconModel } from './icon.model';
+
+@Component({
+  selector: 'app-trash2-icon',
+  template: `
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      [attr.width]="size()" 
+      [attr.height]="size()" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      [attr.stroke]="color()" 
+      [attr.stroke-width]="strokeWidth()" 
+      stroke-linecap="round" 
+      stroke-linejoin="round"
+    >
+      <path d="M3 6h18"></path>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      <line x1="10" x2="10" y1="11" y2="17"></line>
+      <line x1="14" x2="14" y1="11" y2="17"></line>
+    </svg>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class Trash2IconComponent extends IconModel {
+}
