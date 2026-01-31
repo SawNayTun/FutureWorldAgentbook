@@ -1,34 +1,37 @@
-<div class="receipt-container text-black bg-white p-1 font-mono text-xs">
-  <header class="text-center mb-2">
-    <h1 class="font-bold text-sm">{{ shopName() }}</h1>
-    <p>{{ currentDate | date:'dd/MM/yyyy hh:mm a' }}</p>
+<div class="receipt-container w-full text-black bg-white font-mono text-xs leading-tight">
+  <header class="text-center mb-3">
+    <h1 class="font-bold text-sm break-words uppercase">{{ shopName() }}</h1>
+    <p class="text-[10px] text-gray-600 mt-1">{{ currentDate | date:'dd/MM/yyyy, h:mm a' }}</p>
   </header>
   
-  <div class="border-t border-b border-dashed border-black my-2 py-1">
-    <div class="flex justify-between font-bold">
+  <div class="border-t border-b border-dashed border-black my-2 py-1.5">
+    <div class="flex justify-between font-bold text-[11px]">
       <span>ဂဏန်း</span>
-      <span>ငွေပမာဏ</span>
+      <span>ပမာဏ</span>
     </div>
   </div>
 
-  <main class="space-y-1">
+  <main class="space-y-1 mb-2">
     @for(item of dataList(); track item.id) {
-      <div class="flex justify-between">
-        <span>{{ item.n }}</span>
+      <div class="flex justify-between items-start">
+        <span class="font-bold">{{ item.n }}</span>
         <span>{{ item.a.toLocaleString() }}</span>
       </div>
     }
   </main>
 
-  <footer class="mt-2 border-t border-dashed border-black pt-1">
-    <div class="flex justify-between font-bold">
-      <span>စုစုပေါင်း ကွက်:</span>
-      <span>{{ totalCount() }}</span>
+  <footer class="mt-2 border-t border-dashed border-black pt-2">
+    <div class="flex justify-between font-bold mb-1">
+      <span>အရေအတွက်:</span>
+      <span>{{ totalCount() }} ကွက်</span>
     </div>
-    <div class="flex justify-between font-bold text-sm">
-      <span>စုစုပေါင်း ငွေ:</span>
-      <span>{{ totalAmount().toLocaleString() }} ကျပ်</span>
+    <div class="flex justify-between font-black text-sm">
+      <span>စုစုပေါင်း:</span>
+      <span>{{ totalAmount().toLocaleString() }}</span>
     </div>
-    <p class="text-center text-[10px] mt-4">ကျေးဇူးတင်ပါသည်</p>
+    <div class="text-center mt-4">
+      <p class="text-[10px] font-bold">*** ကျေးဇူးတင်ပါသည် ***</p>
+      <p class="text-[9px] mt-1 text-gray-500">GOOD LUCK</p>
+    </div>
   </footer>
 </div>

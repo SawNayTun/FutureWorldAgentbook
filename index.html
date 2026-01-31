@@ -2,20 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Future World</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#f59e0b">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
       overscroll-behavior: none;
     }
     @media print {
+      /* Hide everything by default */
       body * {
         visibility: hidden;
       }
+      
+      /* Reset layout constraints that might clip content */
+      html, body, app-root, main, .h-screen, .overflow-hidden {
+        height: auto !important;
+        overflow: visible !important;
+        position: static !important;
+        background-color: white !important;
+      }
+
+      /* Target the receipt specifically */
       .receipt-container, .receipt-container * {
         visibility: visible;
       }
+
       .receipt-container {
         position: absolute;
         left: 0;
@@ -23,10 +39,13 @@
         width: 100%;
         margin: 0;
         padding: 0;
+        background: white;
+        color: black;
       }
+      
       @page {
         size: 58mm auto;
-        margin: 3mm;
+        margin: 3mm; /* Small margin for the hardware printer */
       }
     }
   </style>

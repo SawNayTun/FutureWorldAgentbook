@@ -2,6 +2,9 @@ const CACHE_NAME = 'future-world-cache-v1';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
   'https://cdn.tailwindcss.com',
   'https://esm.sh/rxjs@^7.8.2?conditions=es2015',
   'https://esm.sh/rxjs@^7.8.2/operators?conditions=es2015',

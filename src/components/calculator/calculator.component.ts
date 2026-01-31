@@ -173,7 +173,7 @@ export class CalculatorComponent implements AfterViewInit {
     setTimeout(() => {
       window.print();
       this.isPrinting.set(false);
-    }, 100);
+    }, 300);
   }
 
   removeSingleItem(id: number) {

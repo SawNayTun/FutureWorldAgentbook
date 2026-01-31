@@ -47,7 +47,7 @@
   }
   @case ('app') {
     <div class="h-screen bg-black text-white flex flex-col overflow-hidden select-none">
-      <header class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0 relative">
+      <header class="px-3 pb-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0 relative" style="padding-top: calc(0.5rem + env(safe-area-inset-top));">
         <div class="flex items-center gap-2">
           <app-store-icon [size]="14" class="text-amber-400"></app-store-icon>
           <span class="text-[10px] font-black uppercase text-slate-200">{{ adminSettings()?.shopName }}</span>
