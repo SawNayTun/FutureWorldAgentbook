@@ -13,6 +13,7 @@ export interface UserData {
   deviceId: string | null;
   createdAt: string;
   expiresAt: string | null;
+  pin?: string;
 }
 
 export interface QuickSet {

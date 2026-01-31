@@ -18,6 +18,7 @@
   }
   @case ('login') {
     <app-login 
+      mode="token"
       [shopName]="adminSettings()?.shopName || 'Future World'" 
       [loginError]="loginError()"
       [isLoggingIn]="isLoggingIn()"
@@ -25,13 +26,43 @@
       (inputChange)="clearLoginError()">
     </app-login>
   }
+  @case ('pin-lock') {
+    <app-login
+      mode="pin"
+      [currentUser]="currentUser()"
+      [loginError]="loginError()"
+      [isLoggingIn]="isLoggingIn()"
+      (pinLoginAttempt)="handlePinLogin($event)"
+      (inputChange)="clearLoginError()"
+      (logout)="handleLogout()">
+    </app-login>
+  }
+  @case ('set-pin') {
+    <app-login
+      mode="set-pin"
+      [currentUser]="currentUser()"
+      (pinSetAttempt)="handleSetPin($event)"
+      (skipPin)="handleSkipPin()">
+    </app-login>
+  }
   @case ('app') {
     <div class="h-screen bg-black text-white flex flex-col overflow-hidden select-none">
-      <header class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0">
+      <header class="px-3 py-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0 relative">
         <div class="flex items-center gap-2">
           <app-store-icon [size]="14" class="text-amber-400"></app-store-icon>
           <span class="text-[10px] font-black uppercase text-slate-200">{{ adminSettings()?.shopName }}</span>
         </div>
+        
+        @if (currentUser(); as user) {
+          @let status = userExpiryStatus();
+          @if(status) {
+            <div class="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-slate-950/50 px-3 py-1 rounded-full border border-slate-800">
+              <span class="text-xs font-bold text-slate-300">{{ user.name }}</span>
+              <span class="text-[9px] font-mono px-1.5 py-0.5 rounded" [class]="status.colorClass">{{ status.text }}</span>
+            </div>
+          }
+        }
+
         <div class="flex gap-4">
           @if (isAdmin()) {
             <button (click)="toggleTab()" class="text-amber-400 hover:text-amber-300 transition-colors">

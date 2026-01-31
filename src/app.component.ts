@@ -1,7 +1,7 @@
 
-import { Component, ChangeDetectionStrategy, signal, inject, effect, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, inject, effect, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataService } from './services/data.service';
+import { DataService, UserData } from './services/data.service';
 import { LoginComponent } from './components/login/login.component';
 import { CalculatorComponent } from './components/calculator/calculator.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
@@ -11,7 +11,8 @@ import { CalculatorIconComponent } from './components/icons/calculator-icon.comp
 import { LogoutIconComponent } from './components/icons/logout-icon.component';
 import { Title } from '@angular/platform-browser';
 
-type AppState = 'initializing' | 'error' | 'login' | 'app';
+type AppState = 'initializing' | 'error' | 'login' | 'pin-lock' | 'set-pin' | 'app';
+const SESSION_KEY = 'fw_user_session';
 
 @Component({
   selector: 'app-root',
@@ -34,12 +35,43 @@ export class AppComponent implements OnInit {
 
   appState = signal<AppState>('initializing');
   isAdmin = signal(false);
+  currentUser = signal<UserData | null>(null);
   activeTab = signal<'calc' | 'admin'>('calc');
   loginError = signal<string | null>(null);
   isLoggingIn = signal(false);
   
   adminSettings = this.dataService.adminSettings;
   users = this.dataService.allUsers;
+
+  userExpiryStatus = computed(() => {
+    const user = this.currentUser();
+    if (!user) {
+        return null;
+    }
+    
+    if (!user.expiresAt) {
+      return { text: 'သက်တမ်းအကန့်အသတ်မရှိ', colorClass: 'text-emerald-400 bg-emerald-500/10' };
+    }
+
+    const expiryDate = new Date(user.expiresAt);
+    const now = new Date();
+    expiryDate.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
+
+    const diffTime = expiryDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { text: `သက်တမ်းကုန်ဆုံး`, colorClass: 'text-rose-400 bg-rose-500/10' };
+    }
+    if (diffDays === 0) {
+       return { text: `ယနေ့ သက်တမ်းကုန်မည်`, colorClass: 'text-amber-400 bg-amber-500/10' };
+    }
+    if (diffDays <= 7) {
+      return { text: `${diffDays} ရက်အတွင်း ကုန်ဆုံးမည်`, colorClass: 'text-amber-400 bg-amber-500/10' };
+    }
+    return { text: `${diffDays} ရက်အတွင်း ကုန်ဆုံးမည်`, colorClass: 'text-slate-400 bg-slate-500/10' };
+  });
 
   constructor() {
     effect(() => {
@@ -51,13 +83,41 @@ export class AppComponent implements OnInit {
   }
 
   async ngOnInit() {
-    this.initializeApp();
-  }
-  
-  async initializeApp() {
     this.appState.set('initializing');
-    const initState = await this.dataService.initialize();
-    this.appState.set(initState);
+    await this.dataService.initialize();
+
+    const sessionData = localStorage.getItem(SESSION_KEY);
+    if (sessionData) {
+      try {
+        const user: UserData = JSON.parse(sessionData);
+        
+        if (user.expiresAt && new Date(user.expiresAt) < new Date()) {
+          this.handleLogout('Key သက်တမ်းကုန်နေပါသည်');
+          return;
+        }
+
+        const deviceId = this.getDeviceId();
+        if (user.deviceId !== deviceId) {
+          this.handleLogout('ဤအကောင့်သည် အခြားစက်အတွက်သာဖြစ်သည်');
+          return;
+        }
+        
+        this.currentUser.set(user);
+        this.isAdmin.set(false);
+
+        if (user.pin) {
+          this.appState.set('pin-lock');
+        } else {
+          this.appState.set('set-pin');
+        }
+      } catch (e) {
+        localStorage.removeItem(SESSION_KEY);
+        this.appState.set('login');
+      }
+    } else {
+        const initState = this.dataService.adminSettings() ? 'login' : 'error';
+        this.appState.set(initState);
+    }
   }
 
   retry() {
@@ -77,66 +137,79 @@ export class AppComponent implements OnInit {
     this.isLoggingIn.set(true);
     this.loginError.set(null);
     
-    const input = loginInput.trim().toUpperCase();
+    const input = loginInput.trim();
     const settings = this.adminSettings();
-    const users = this.users();
 
-    if (!settings) {
-      this.loginError.set('Application data could not be loaded.');
-      this.isLoggingIn.set(false);
-      return;
-    }
-    
-    // Admin Login
-    if (input === settings.masterPass.toUpperCase()) {
+    if (settings && input.toUpperCase() === settings.masterPass.toUpperCase()) {
       this.isAdmin.set(true);
+      this.currentUser.set(null);
       this.appState.set('app');
       this.activeTab.set('calc');
       this.isLoggingIn.set(false);
       return;
     }
 
-    // User Login
-    const user = users.find(u => u.key.toUpperCase() === input);
+    try {
+      const user: UserData = JSON.parse(atob(input));
 
-    if (!user) {
-      this.loginError.set('ကုဒ်မှားနေပါသည်');
+      if (!user || !user.id || !user.key || !user.createdAt) {
+        throw new Error('Invalid token structure');
+      }
+
+      if (user.expiresAt && new Date(user.expiresAt) < new Date()) {
+        this.loginError.set('ဤ Login Token သည် သက်တမ်းကုန်နေပါသည်');
+        this.isLoggingIn.set(false);
+        return;
+      }
+
+      const deviceId = this.getDeviceId();
+      const sessionUser: UserData = { ...user, deviceId: deviceId };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
+
+      this.currentUser.set(sessionUser);
+      this.isAdmin.set(false);
+      this.appState.set('set-pin');
       this.isLoggingIn.set(false);
-      return;
-    }
 
-    // Check for expiration
-    if (user.expiresAt && new Date(user.expiresAt) < new Date()) {
-      this.loginError.set('Key သက်တမ်းကုန်နေပါသည်');
+    } catch (error) {
+      this.loginError.set('Login Token မမှန်ပါ။ Admin ထံမှရသော စာသားအားလုံးကို copy ကူးပြီးထည့်ပါ');
       this.isLoggingIn.set(false);
-      return;
     }
-    
-    // Device ID Check
-    const deviceId = this.getDeviceId();
-    if (user.deviceId && user.deviceId !== deviceId) {
-      this.loginError.set('ဤကုဒ်သည် အခြားစက်တွင် အသုံးပြုနေပါသည်');
-      this.isLoggingIn.set(false);
-      return;
+  }
+
+  handlePinLogin(pin: string) {
+    this.isLoggingIn.set(true);
+    this.loginError.set(null);
+    const user = this.currentUser();
+
+    if (user && user.pin === pin) {
+      this.appState.set('app');
+    } else {
+      this.loginError.set('PIN မမှန်ပါ။');
     }
-
-    // If first login on any device, link the device
-    if (!user.deviceId) {
-      this.dataService.linkDeviceToUser(user.id, deviceId);
-    }
-
-
-    // Success
-    this.isAdmin.set(false);
-    this.appState.set('app');
-    this.activeTab.set('calc');
     this.isLoggingIn.set(false);
   }
 
-  handleLogout() {
+  handleSetPin(pin: string) {
+    const user = this.currentUser();
+    if (!user) return;
+
+    const updatedUser = { ...user, pin };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
+    this.currentUser.set(updatedUser);
+    this.appState.set('app');
+  }
+  
+  handleSkipPin() {
+    this.appState.set('app');
+  }
+
+  handleLogout(error: string | null = null) {
+    localStorage.removeItem(SESSION_KEY);
+    this.currentUser.set(null);
     this.appState.set('login');
     this.isAdmin.set(false);
-    this.loginError.set(null);
+    this.loginError.set(error);
   }
 
   toggleTab() {

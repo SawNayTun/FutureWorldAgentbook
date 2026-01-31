@@ -58,9 +58,6 @@
             <p class="text-amber-400 font-black text-xs">{{ user.name }}</p>
             <p class="text-[10px] font-mono text-slate-500">{{ user.key }}</p>
             <p class="text-[10px] font-mono text-slate-600">ID: {{ user.id.substring(0, 8).toUpperCase() }}</p>
-            @if (user.deviceId) {
-              <p class="text-[10px] font-mono text-slate-600">Device: <span class="text-emerald-500 font-bold">LINKED</span></p>
-            }
             <div class="mt-2 space-y-0.5">
               <p class="text-[9px] font-sans text-slate-600">
                 Created: <span class="text-slate-400">{{ user.createdAt.split('T')[0] }}</span>
@@ -72,17 +69,12 @@
             </div>
           </div>
           <div class="flex items-center">
-              @if (user.deviceId) {
-                <button (click)="resetDevice(user)" class="p-2 rounded-full hover:bg-amber-500/10 active:bg-amber-500/20 transition-colors" title="Reset Device Lock">
-                    <app-device-off-icon [size]="16" class="text-amber-500"></app-device-off-icon>
-                </button>
-              }
               @if (user.expiresAt) {
                 <button (click)="renewUser(user)" class="p-2 rounded-full hover:bg-amber-500/10 active:bg-amber-500/20 transition-colors" title="Renew Subscription">
                     <app-plus-icon [size]="16" class="text-amber-400"></app-plus-icon>
                 </button>
               }
-              <button (click)="shareKey(user)" class="p-2 rounded-full hover:bg-slate-500/10 active:bg-slate-500/20 transition-colors" title="Share Key">
+              <button (click)="shareKey(user)" class="p-2 rounded-full hover:bg-slate-500/10 active:bg-slate-500/20 transition-colors" title="Share Login Token">
                   @if (copiedKeyId() === user.id) {
                       <app-check-icon [size]="16" class="text-emerald-500"></app-check-icon>
                   } @else {

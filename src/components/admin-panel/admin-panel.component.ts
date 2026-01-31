@@ -112,12 +112,6 @@ export class AdminPanelComponent implements OnInit {
     this.renewalDays.set(days.toString());
   }
 
-  resetDevice(user: UserData) {
-    if (confirm(`Are you sure you want to reset the device lock for ${user.name}? They will be able to log in from a new device.`)) {
-      this.dataService.resetUserDevice(user.id);
-    }
-  }
-
   getExpiryStatus(user: UserData): { text: string; colorClass: string } {
     if (!user.expiresAt) {
       return { text: 'Never', colorClass: 'text-emerald-500' };
@@ -158,16 +152,28 @@ export class AdminPanelComponent implements OnInit {
   }
 
   async shareKey(user: UserData) {
-    const expiryText = user.expiresAt ? new Date(user.expiresAt).toLocaleDateString('en-GB') : 'Never';
-    const userId = user.id.substring(0, 8).toUpperCase();
-    const textToCopy = `အမည်: ${user.name}\nUser ID: ${userId}\nကုဒ် (Key): ${user.key}\nသက်တမ်းကုန်ဆုံးရက်: ${expiryText}`;
     try {
-        await navigator.clipboard.writeText(textToCopy);
-        this.copiedKeyId.set(user.id);
-        setTimeout(() => this.copiedKeyId.set(null), 2000);
+      // Create a clean user object for the token. Device ID is always null in the master token.
+      const userTokenData = {
+          id: user.id,
+          name: user.name,
+          key: user.key,
+          createdAt: user.createdAt,
+          expiresAt: user.expiresAt,
+          deviceId: null 
+      };
+
+      const loginToken = btoa(JSON.stringify(userTokenData));
+      const expiryText = user.expiresAt ? new Date(user.expiresAt).toLocaleDateString('en-GB') : 'Lifetime';
+      
+      const textToCopy = `--- Future World အကောင့် ---\n\nအမည်: ${user.name}\nသက်တမ်းကုန်ဆုံးရက်: ${expiryText}\n\nLogin Token (ဤစာသားအားလုံးကို copy ကူးပြီး app ထဲတွင်ထည့်ပါ):\n\n${loginToken}`;
+
+      await navigator.clipboard.writeText(textToCopy);
+      this.copiedKeyId.set(user.id);
+      setTimeout(() => this.copiedKeyId.set(null), 2000);
     } catch (err) {
-        console.error('Failed to copy key: ', err);
-        alert('Failed to copy key.');
+      console.error('Failed to create or copy login token: ', err);
+      alert('Failed to copy login token.');
     }
   }
 

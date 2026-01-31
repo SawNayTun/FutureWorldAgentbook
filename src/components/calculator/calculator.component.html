@@ -129,7 +129,10 @@
       <button (click)="clearAllEntries()" class="w-12 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 h-11 flex items-center justify-center active:bg-rose-500/20 transition-colors">
         <app-trash2-icon [size]="20"></app-trash2-icon>
       </button>
-      <div class="px-3 min-w-[80px] border-r border-slate-800">
+      <button (click)="printReceipt()" class="w-12 bg-sky-500/10 text-sky-400 rounded-xl border border-sky-500/20 h-11 flex items-center justify-center active:bg-sky-500/20 transition-colors">
+        <app-printer-icon [size]="20"></app-printer-icon>
+      </button>
+      <div class="px-3 min-w-[80px] border-l border-slate-800">
         <p class="text-[14px] font-black text-amber-400 leading-none">{{ totalAmount().toLocaleString() }}</p>
         <p class="text-[8px] text-slate-500 font-black mt-1 uppercase tracking-tighter">စုစုပေါင်းပမာဏ</p>
       </div>
@@ -139,3 +142,12 @@
     </div>
   }
 </div>
+
+@if(isPrinting()) {
+  <app-receipt
+    [shopName]="personalShopName()"
+    [dataList]="dataList()"
+    [totalAmount]="totalAmount()"
+    [totalCount]="totalCount()">
+  </app-receipt>
+}

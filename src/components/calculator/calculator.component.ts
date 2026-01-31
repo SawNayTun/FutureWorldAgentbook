@@ -7,8 +7,10 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
 import { CopyIconComponent } from '../icons/copy-icon.component';
 import { DataService, QuickSet } from '../../services/data.service';
 import { SaveIconComponent } from '../icons/save-icon.component';
+import { PrinterIconComponent } from '../icons/printer-icon.component';
+import { ReceiptComponent } from '../receipt/receipt.component';
 
-interface DataItem {
+export interface DataItem {
   id: number;
   n: string;
   a: number;
@@ -18,7 +20,7 @@ interface DataItem {
   selector: 'app-calculator',
   templateUrl: './calculator.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent]
+  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ReceiptComponent]
 })
 export class CalculatorComponent implements AfterViewInit {
   private dataService = inject(DataService);
@@ -38,6 +40,7 @@ export class CalculatorComponent implements AfterViewInit {
   
   personalShopName = signal('');
   newSetName = signal('');
+  isPrinting = signal(false);
 
   quickSets = this.dataService.quickSets;
   totalAmount = computed(() => this.dataList().reduce((sum, item) => sum + item.a, 0));
@@ -159,6 +162,18 @@ export class CalculatorComponent implements AfterViewInit {
     this.numInput.set('');
     this.amtInput.set('');
     this.numRef.nativeElement?.focus();
+  }
+
+  printReceipt() {
+    if (this.dataList().length === 0) return;
+    
+    this.isPrinting.set(true);
+  
+    // Wait for the DOM to update with the receipt component, then print
+    setTimeout(() => {
+      window.print();
+      this.isPrinting.set(false);
+    }, 100);
   }
 
   removeSingleItem(id: number) {

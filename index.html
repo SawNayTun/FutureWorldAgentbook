@@ -9,6 +9,26 @@
     body {
       overscroll-behavior: none;
     }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .receipt-container, .receipt-container * {
+        visibility: visible;
+      }
+      .receipt-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      @page {
+        size: 58mm auto;
+        margin: 3mm;
+      }
+    }
   </style>
 <script type="importmap">
 {
