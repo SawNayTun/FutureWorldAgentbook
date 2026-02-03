@@ -5,13 +5,15 @@ import { DataService, UserData } from './services/data.service';
 import { LoginComponent } from './components/login/login.component';
 import { CalculatorComponent } from './components/calculator/calculator.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
+import { ScannerComponent } from './components/scanner/scanner.component';
 import { StoreIconComponent } from './components/icons/store-icon.component';
 import { UsersIconComponent } from './components/icons/users-icon.component';
 import { CalculatorIconComponent } from './components/icons/calculator-icon.component';
 import { LogoutIconComponent } from './components/icons/logout-icon.component';
+import { CameraIconComponent } from './components/icons/camera-icon.component';
 import { Title } from '@angular/platform-browser';
 
-type AppState = 'initializing' | 'error' | 'login' | 'pin-lock' | 'set-pin' | 'app';
+type AppState = 'initializing' | 'error' | 'login' | 'pin-lock' | 'set-pin' | 'app' | 'scanner';
 const SESSION_KEY = 'fw_user_session';
 
 @Component({
@@ -23,10 +25,12 @@ const SESSION_KEY = 'fw_user_session';
     LoginComponent,
     CalculatorComponent,
     AdminPanelComponent,
+    ScannerComponent,
     StoreIconComponent,
     UsersIconComponent,
     CalculatorIconComponent,
     LogoutIconComponent,
+    CameraIconComponent,
   ],
 })
 export class AppComponent implements OnInit {
@@ -34,6 +38,9 @@ export class AppComponent implements OnInit {
   private titleService = inject(Title);
 
   appState = signal<AppState>('initializing');
+  // Store previous state to return from scanner
+  private previousState: AppState = 'app';
+  
   isAdmin = signal(false);
   currentUser = signal<UserData | null>(null);
   activeTab = signal<'calc' | 'admin'>('calc');
@@ -214,6 +221,17 @@ export class AppComponent implements OnInit {
 
   toggleTab() {
     this.activeTab.update(current => current === 'calc' ? 'admin' : 'calc');
+  }
+  
+  openScanner() {
+    if (this.appState() === 'app') {
+      this.previousState = this.appState();
+      this.appState.set('scanner');
+    }
+  }
+
+  closeScanner() {
+    this.appState.set(this.previousState);
   }
 
   clearLoginError() {
