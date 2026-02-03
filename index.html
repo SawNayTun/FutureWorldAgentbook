@@ -2,17 +2,40 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="application-name" content="Future World">
   <title>Future World</title>
   <link rel="manifest" href="/manifest.webmanifest">
-  <meta name="theme-color" content="#f59e0b">
+  <!-- Theme color matches the header background (slate-900) -->
+  <meta name="theme-color" content="#0f172a">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      overscroll-behavior: none;
+      overscroll-behavior-y: none; /* Prevents pull-to-refresh on Android */
+      -webkit-tap-highlight-color: transparent; /* Removes blue tap box */
+      touch-action: manipulation;
     }
+    /* Hide scrollbars for a more native feel */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #000; 
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333; 
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555; 
+    }
+
     @media print {
       /* Hide everything by default */
       body * {
@@ -48,6 +71,14 @@
         margin: 3mm; /* Small margin for the hardware printer */
       }
     }
+    /* Custom Scrollbar for Chat */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
   </style>
 <script type="importmap">
 {
@@ -64,7 +95,9 @@
     "@angular/core": "https://esm.sh/@angular/core@^21.1.2?external=rxjs",
     "@angular/compiler": "https://esm.sh/@angular/compiler@^21.1.2?external=rxjs",
     "@angular/forms": "https://esm.sh/@angular/forms@^21.1.2?external=rxjs",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0?external=rxjs"
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0?external=rxjs",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+    "firebase/database": "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js"
   }
 }
 </script>
@@ -73,16 +106,16 @@
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          console.log('SW Registered');
         })
         .catch(error => {
-          console.log('ServiceWorker registration failed: ', error);
+          console.log('SW Failed: ', error);
         });
     });
   }
 </script>
 </head>
-<body class="bg-black">
+<body class="bg-black select-none">
   <app-root></app-root>
 </body>
 </html>

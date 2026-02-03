@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, ViewChild, ElementRef, OnDestroy, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, ViewChild, ElementRef, OnDestroy, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GoogleGenAI } from "@google/genai";
 import { CameraIconComponent } from '../icons/camera-icon.component';
@@ -7,6 +7,7 @@ import { CheckIconComponent } from '../icons/check-icon.component';
 import { CopyIconComponent } from '../icons/copy-icon.component';
 import { ShareIconComponent } from '../icons/share-icon.component';
 import { ImageIconComponent } from '../icons/image-icon.component';
+import { ChatService } from '../../services/chat.service';
 
 @Component({
   selector: 'app-scanner',
@@ -16,6 +17,7 @@ import { ImageIconComponent } from '../icons/image-icon.component';
 })
 export class ScannerComponent implements OnDestroy {
   close = output<void>();
+  userIdFound = output<{id: string, name: string}>();
 
   @ViewChild('video') videoElement!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvas') canvasElement!: ElementRef<HTMLCanvasElement>;
@@ -35,22 +37,37 @@ export class ScannerComponent implements OnDestroy {
   }
 
   async startCamera() {
+    // If browser doesn't support mediaDevices, switch to fallback immediately
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.hasPermission.set(false);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (this.hasPermission() === null) {
+        this.hasPermission.set(false);
+      }
+    }, 3000);
+
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'environment' // Prefer back camera
+          facingMode: 'environment' 
         } 
       });
+      
+      clearTimeout(timeoutId);
       this.hasPermission.set(true);
+      
       setTimeout(() => {
-        if (this.videoElement) {
+        if (this.videoElement && this.stream) {
           this.videoElement.nativeElement.srcObject = this.stream;
         }
-      }, 100); // Small delay to ensure view is ready
+      }, 100); 
     } catch (err) {
+      clearTimeout(timeoutId);
       console.error('Error accessing camera:', err);
       this.hasPermission.set(false);
-      this.error.set('Camera access denied. Please enable permissions.');
     }
   }
 
@@ -60,8 +77,6 @@ export class ScannerComponent implements OnDestroy {
     const video = this.videoElement.nativeElement;
     const canvas = this.canvasElement.nativeElement;
     
-    // Performance Optimization: Resize image
-    // Large images take too long to upload/process. 1024px is enough for OCR.
     const MAX_SIZE = 1024;
     let width = video.videoWidth;
     let height = video.videoHeight;
@@ -84,16 +99,25 @@ export class ScannerComponent implements OnDestroy {
     const context = canvas.getContext('2d');
     if (context) {
       context.drawImage(video, 0, 0, width, height);
-      // Reduce quality to 0.6 (60%) to speed up transfer
-      const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-      this.capturedImage.set(imageDataUrl);
-      this.stopCamera(); 
-      this.processImage(imageDataUrl);
+      
+      // Try local QR scan on capture as well
+      this.tryLocalQrScan(canvas).then(found => {
+          if (found) return; // If QR found locally, stop processing
+          
+          const imageDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+          this.capturedImage.set(imageDataUrl);
+          this.stopCamera(); 
+          this.processImage(imageDataUrl);
+      });
     }
   }
 
   triggerFileUpload() {
-    this.fileInput.nativeElement.click();
+    setTimeout(() => {
+        if (this.fileInput && this.fileInput.nativeElement) {
+            this.fileInput.nativeElement.click();
+        }
+    }, 0);
   }
 
   handleFile(event: Event) {
@@ -105,9 +129,8 @@ export class ScannerComponent implements OnDestroy {
       reader.onload = (e) => {
         const result = e.target?.result as string;
         
-        // We need to resize uploaded images too, as they might be 4K+ resolution
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
              const canvas = this.canvasElement.nativeElement;
              const MAX_SIZE = 1024;
              let width = img.width;
@@ -130,6 +153,14 @@ export class ScannerComponent implements OnDestroy {
              const ctx = canvas.getContext('2d');
              ctx?.drawImage(img, 0, 0, width, height);
              
+             // 1. Try Local QR Detection first (Fastest)
+             const qrFound = await this.tryLocalQrScan(canvas);
+             if (qrFound) {
+                 this.stopCamera();
+                 return;
+             }
+             
+             // 2. Fallback to Gemini
              const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
              this.capturedImage.set(resizedDataUrl);
              this.stopCamera();
@@ -142,6 +173,46 @@ export class ScannerComponent implements OnDestroy {
     input.value = ''; 
   }
 
+  // Uses the browser's BarcodeDetector API if available
+  async tryLocalQrScan(imageSource: ImageBitmapSource): Promise<boolean> {
+    if ('BarcodeDetector' in window) {
+      try {
+        // @ts-ignore
+        const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        const nats = await barcodeDetector.detect(imageSource);
+        if (nats.length > 0) {
+           const raw = nats[0].rawValue;
+           return this.handleDecodedText(raw);
+        }
+      } catch (e) {
+        // Fallback to Gemini if not supported or fails
+      }
+    }
+    return false;
+  }
+
+  handleDecodedText(text: string): boolean {
+      try {
+          // Try decoding URI component first (QR data is encoded in ChatComponent)
+          const decoded = decodeURIComponent(text);
+          const data = JSON.parse(decoded);
+          if (data.type === 'fw_user_id' && data.id && data.name) {
+               this.userIdFound.emit({ id: data.id, name: data.name });
+               return true;
+          }
+      } catch(e) {
+          // Try parsing raw text if decode failed
+          try {
+             const data = JSON.parse(text);
+             if (data.type === 'fw_user_id' && data.id && data.name) {
+                 this.userIdFound.emit({ id: data.id, name: data.name });
+                 return true;
+             }
+          } catch(e2) {}
+      }
+      return false;
+  }
+
   async processImage(imageDataUrl: string) {
     this.isProcessing.set(true);
     this.error.set(null);
@@ -149,42 +220,17 @@ export class ScannerComponent implements OnDestroy {
     try {
       const base64Data = imageDataUrl.split(',')[1];
 
-      // Specialized prompt for Burmese 2D Lottery
+      // Dual-Purpose Prompt: Betting Slip OR User ID QR
       const prompt = `
-        You are an expert data entry assistant for a Burmese 2D lottery agent. 
-        Analyze the image (handwritten or printed) and extract the betting list.
+        Analyze the image. It is either:
+        1. A handwritten/printed 2D betting list.
+        2. A QR Code containing a User ID JSON object (e.g., {"type":"fw_user_id","id":"...","name":"..."}).
+
+        Task:
+        - If it is a QR Code, extract the JSON content. If the content is URL encoded, output it as is.
+        - If it is a Betting List, extract the list in format: \`[Code] [Amount]\` (one per line). Use strict mapping rules: "R"->R, "အပူး"->apu, etc.
         
-        **Translation Rules (Strict Mapping):**
-        You must strictly map the Burmese terms or mixed usage to the following specific codes.
-
-        1.  **Direct Numbers:** "25 100" -> \`25 100\`
-        2.  **R (Reverse):** "25r", "25R", "၂၅အာ", "၂၅ အပြန်" -> \`25R\`
-        3.  **Apu (Doubles):** "အပူး", "apu" -> \`apu\`
-        4.  **Nk (Brothers):** "ညီကို", "nk" -> \`nk\`
-        5.  **Pao (Power):** "ပါဝါ", "pao" -> \`pao\`
-        6.  **Nat (Nat Khat):** "နက္ခတ်", "nat" -> \`nat\`
-        7.  **Head (T):** "ထိပ်", "t" (e.g., "1ထိပ်", "1t") -> \`1t\`
-        8.  **Tail (P):** "ပိတ်", "p" (e.g., "1ပိတ်", "1p") -> \`1p\`
-        9.  **K (Kway/Permute):** "ခွေ", "k" (e.g., "12ခွေ", "12k") -> \`12k\`
-        10. **A (Apa/Include):** "အပါ", "a" (e.g., "1အပါ", "1a") -> \`1a\`
-        11. **V (Brake/Vyit):** "ဗြိတ်", "ဘရိတ်", "v", "b" (e.g., "1ဗြိတ်", "1v") -> \`1v\`
-        12. **SS (EvenEven):** "စုံစုံ", "ss", "ssss" -> \`ss\`
-        13. **MM (OddOdd):** "မမ", "mm", "mmmm" -> \`mm\`
-        14. **SM (EvenOdd):** "စုံမ", "sm", "smsm" -> \`sm\`
-        15. **MS (OddEven):** "မစုံ", "ms", "msms" -> \`ms\`
-        16. **SP (TenFull):** "ဆယ်ပြည့်", "sp", "spsp" -> \`sp\`
-        17. **BB (Bhu/ZeroTen):** "ဘူ", "bb", "bbbb" -> \`bb\`
-        18. **AK (Akat/Neighbor):** "အကပ်", "ak" (e.g., "1အကပ်", "1ak") -> \`1ak\`
-
-        **Output Format:**
-        - STRICTLY output one item per line: \`[Code] [Amount]\`
-        - Do not output explanations, headers, bold text, or totals.
-        - Example Output:
-          25 500
-          1t 1000
-          apu 500
-          25R 300
-          ss 1000
+        Do not explain. Just output the result.
       `;
 
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -202,7 +248,15 @@ export class ScannerComponent implements OnDestroy {
       });
 
       if (response.text) {
-        this.scannedText.set(response.text.trim());
+        const text = response.text.trim();
+        
+        // Attempt to parse as User ID (QR logic fallback)
+        const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        if (this.handleDecodedText(cleanText)) {
+            return;
+        }
+
+        this.scannedText.set(text);
       } else {
         this.error.set('Could not read text. Please try again.');
       }

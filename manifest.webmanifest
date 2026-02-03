@@ -1,11 +1,15 @@
 {
   "name": "Future World 2D Ledger",
   "short_name": "Future World",
-  "theme_color": "#f59e0b",
+  "description": "Professional 2D Ledger and Calculator Tool",
+  "theme_color": "#0f172a",
   "background_color": "#000000",
   "display": "standalone",
+  "orientation": "portrait",
   "scope": "/",
   "start_url": "/",
+  "id": "/",
+  "categories": ["finance", "utilities", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",

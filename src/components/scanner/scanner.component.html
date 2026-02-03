@@ -1,7 +1,7 @@
 <div class="absolute inset-0 z-50 bg-black flex flex-col">
   <!-- Header -->
   <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0" style="padding-top: calc(0.75rem + env(safe-area-inset-top));">
-    <h2 class="font-black text-amber-400 text-sm uppercase tracking-wider">Scan Sheet</h2>
+    <h2 class="font-black text-amber-400 text-sm uppercase tracking-wider">Scan Sheet / QR</h2>
     <button (click)="closeScanner()" class="text-slate-400 hover:text-white">
       <app-x-circle-icon [size]="24"></app-x-circle-icon>
     </button>
@@ -12,10 +12,13 @@
     @if (!capturedImage()) {
       <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
         @if (hasPermission() === false) {
-           <div class="text-center p-6">
-             <app-camera-icon [size]="48" class="mx-auto text-slate-600 mb-4"></app-camera-icon>
-             <p class="text-rose-500 font-bold">Camera Access Denied</p>
-             <p class="text-slate-500 text-xs mt-2">Please enable camera permissions in your browser settings to scan.</p>
+           <div class="text-center p-6 flex flex-col items-center justify-center h-full w-full">
+             <button (click)="triggerFileUpload()" class="w-full max-w-[200px] aspect-square rounded-full bg-slate-800 border-4 border-slate-700 flex flex-col items-center justify-center gap-4 active:scale-95 transition-transform group shadow-2xl shadow-black">
+               <div class="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center text-black group-hover:scale-110 transition-transform">
+                  <app-image-icon [size]="32" [strokeWidth]="2.5"></app-image-icon>
+               </div>
+               <span class="text-amber-500 font-black text-lg">Upload QR / Photo</span>
+             </button>
            </div>
         } @else {
           <video #video autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
@@ -30,7 +33,7 @@
           <!-- Controls Container -->
           <div class="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-8 pb-safe">
              <!-- Upload Button -->
-            <button (click)="triggerFileUpload()" class="w-12 h-12 rounded-full bg-slate-800/80 backdrop-blur border border-slate-600 flex items-center justify-center active:scale-95 transition-transform text-white shadow-lg">
+            <button (click)="triggerFileUpload()" class="w-12 h-12 rounded-full bg-slate-800/80 backdrop-blur border border-slate-600 flex items-center justify-center active:scale-95 transition-transform text-white shadow-lg relative">
               <app-image-icon [size]="24"></app-image-icon>
             </button>
 
@@ -52,7 +55,7 @@
            @if(isProcessing()) {
              <div class="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div class="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                <p class="text-amber-400 font-black text-xs animate-pulse">Reading handwriting...</p>
+                <p class="text-amber-400 font-black text-xs animate-pulse">Reading content...</p>
              </div>
            }
            <button (click)="retry()" class="absolute bottom-2 right-2 bg-slate-800 text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-slate-600 hover:bg-slate-700">
@@ -88,6 +91,7 @@
     
     <!-- Hidden Elements -->
     <canvas #canvas class="hidden"></canvas>
+    <!-- capture="environment" forces the back camera on Android -->
     <input #fileInput type="file" accept="image/*" class="hidden" (change)="handleFile($event)">
   </div>
 </div>

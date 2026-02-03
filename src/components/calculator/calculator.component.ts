@@ -8,6 +8,7 @@ import { CopyIconComponent } from '../icons/copy-icon.component';
 import { DataService, QuickSet } from '../../services/data.service';
 import { SaveIconComponent } from '../icons/save-icon.component';
 import { PrinterIconComponent } from '../icons/printer-icon.component';
+import { ShareIconComponent } from '../icons/share-icon.component';
 import { ReceiptComponent } from '../receipt/receipt.component';
 
 export interface DataItem {
@@ -20,7 +21,7 @@ export interface DataItem {
   selector: 'app-calculator',
   templateUrl: './calculator.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ReceiptComponent]
+  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ShareIconComponent, ReceiptComponent]
 })
 export class CalculatorComponent implements AfterViewInit {
   private dataService = inject(DataService);
@@ -174,6 +175,131 @@ export class CalculatorComponent implements AfterViewInit {
       window.print();
       this.isPrinting.set(false);
     }, 300);
+  }
+
+  async shareAsImage() {
+    if (this.dataList().length === 0) return;
+
+    // We manually draw the receipt on a canvas to share it as an image
+    // This avoids heavy libraries like html2canvas and works in this constrained environment
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const items = this.dataList();
+    const shopName = this.personalShopName();
+    const totalAmt = this.totalAmount();
+    const count = this.totalCount();
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB') + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Measurements
+    const width = 500;
+    const padding = 20;
+    const lineHeight = 30;
+    const headerHeight = 100;
+    const footerHeight = 100;
+    const bodyHeight = items.length * lineHeight;
+    const height = headerHeight + bodyHeight + footerHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+
+    // Text Config
+    ctx.fillStyle = '#000000';
+    ctx.textAlign = 'center';
+
+    // Header
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillText(shopName, width / 2, 40);
+    
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#555555';
+    ctx.fillText(dateStr, width / 2, 70);
+
+    // Divider
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.moveTo(padding, 85);
+    ctx.lineTo(width - padding, 85);
+    ctx.stroke();
+
+    // Body (Items)
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = '#000000';
+
+    let y = 120;
+    items.forEach(item => {
+        ctx.fillText(item.n, padding + 20, y);
+        
+        // Dots
+        ctx.save();
+        ctx.fillStyle = '#aaaaaa';
+        const dots = '................................';
+        ctx.fillText(dots, 100, y);
+        ctx.restore();
+
+        // Amount (Right aligned)
+        const amtStr = item.a.toLocaleString();
+        const amtWidth = ctx.measureText(amtStr).width;
+        ctx.fillText(amtStr, width - padding - amtWidth - 10, y);
+        y += lineHeight;
+    });
+
+    // Divider Footer
+    y += 10;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+
+    // Footer
+    y += 40;
+    ctx.font = 'bold 20px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Count: ${count}`, padding, y);
+    
+    const totalStr = `${totalAmt.toLocaleString()} Ks`;
+    const totalWidth = ctx.measureText(totalStr).width;
+    ctx.textAlign = 'right';
+    ctx.fillText(totalStr, width - padding, y);
+    
+    y += 40;
+    ctx.font = 'italic 14px sans-serif';
+    ctx.fillStyle = '#555555';
+    ctx.textAlign = 'center';
+    ctx.fillText('Thank you & Good Luck!', width / 2, y);
+
+    // Convert to Blob and Share
+    canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        
+        const file = new File([blob], 'receipt.png', { type: 'image/png' });
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Betting Receipt',
+                    text: `Receipt from ${shopName}`
+                });
+            } catch (err) {
+                console.log('Share failed (user cancelled or not supported)');
+            }
+        } else {
+            // Fallback: Download
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'receipt.png';
+            a.click();
+            alert('Image saved to gallery (Sharing not supported on this browser)');
+        }
+    }, 'image/png');
   }
 
   removeSingleItem(id: number) {

@@ -1,19 +1,21 @@
-
 import { Component, ChangeDetectionStrategy, signal, inject, effect, OnInit, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DataService, UserData } from './services/data.service';
+import { ChatService } from './services/chat.service';
 import { LoginComponent } from './components/login/login.component';
 import { CalculatorComponent } from './components/calculator/calculator.component';
 import { AdminPanelComponent } from './components/admin-panel/admin-panel.component';
 import { ScannerComponent } from './components/scanner/scanner.component';
+import { ChatComponent } from './components/chat/chat.component'; 
 import { StoreIconComponent } from './components/icons/store-icon.component';
 import { UsersIconComponent } from './components/icons/users-icon.component';
 import { CalculatorIconComponent } from './components/icons/calculator-icon.component';
 import { LogoutIconComponent } from './components/icons/logout-icon.component';
 import { CameraIconComponent } from './components/icons/camera-icon.component';
+import { MessageCircleIconComponent } from './components/icons/message-circle-icon.component';
 import { Title } from '@angular/platform-browser';
 
-type AppState = 'initializing' | 'error' | 'login' | 'pin-lock' | 'set-pin' | 'app' | 'scanner';
+type AppState = 'initializing' | 'error' | 'login' | 'pin-lock' | 'set-pin' | 'app' | 'scanner' | 'chat';
 const SESSION_KEY = 'fw_user_session';
 
 @Component({
@@ -26,19 +28,21 @@ const SESSION_KEY = 'fw_user_session';
     CalculatorComponent,
     AdminPanelComponent,
     ScannerComponent,
+    ChatComponent,
     StoreIconComponent,
     UsersIconComponent,
     CalculatorIconComponent,
     LogoutIconComponent,
     CameraIconComponent,
+    MessageCircleIconComponent
   ],
 })
 export class AppComponent implements OnInit {
   private dataService = inject(DataService);
+  private chatService = inject(ChatService);
   private titleService = inject(Title);
 
   appState = signal<AppState>('initializing');
-  // Store previous state to return from scanner
   private previousState: AppState = 'app';
   
   isAdmin = signal(false);
@@ -52,7 +56,8 @@ export class AppComponent implements OnInit {
 
   userExpiryStatus = computed(() => {
     const user = this.currentUser();
-    if (!user) {
+    // Don't show status if no user OR if it is Admin
+    if (!user || this.isAdmin()) {
         return null;
     }
     
@@ -149,7 +154,19 @@ export class AppComponent implements OnInit {
 
     if (settings && input.toUpperCase() === settings.masterPass.toUpperCase()) {
       this.isAdmin.set(true);
-      this.currentUser.set(null);
+      
+      // Create a virtual user for Admin to enable chat features
+      // This ID is constant so chat history is preserved for Admin
+      const adminUser: UserData = {
+          id: 'ADMIN_ACCOUNT',
+          name: settings.shopName || 'Admin',
+          key: 'ADMIN',
+          deviceId: 'ADMIN_DEVICE',
+          createdAt: new Date().toISOString(),
+          expiresAt: null
+      };
+      this.currentUser.set(adminUser);
+
       this.appState.set('app');
       this.activeTab.set('calc');
       this.isLoggingIn.set(false);
@@ -224,9 +241,11 @@ export class AppComponent implements OnInit {
   }
   
   openScanner() {
-    if (this.appState() === 'app') {
-      this.previousState = this.appState();
-      this.appState.set('scanner');
+    if (this.appState() === 'app' || this.appState() === 'chat') {
+      if (this.appState() !== 'scanner') {
+        this.previousState = this.appState();
+        this.appState.set('scanner');
+      }
     }
   }
 
@@ -234,7 +253,40 @@ export class AppComponent implements OnInit {
     this.appState.set(this.previousState);
   }
 
+  openChat() {
+    if (this.appState() === 'app') {
+      this.previousState = 'app';
+      this.appState.set('chat');
+    }
+  }
+
+  closeChat() {
+    this.appState.set(this.previousState);
+  }
+
   clearLoginError() {
       this.loginError.set(null);
+  }
+
+  // Handle when Scanner finds a User ID via QR
+  async handleUserFound(contact: {id: string, name: string}) {
+      const me = this.currentUser();
+      if (!me) return;
+      
+      if (contact.id === me.id) {
+          alert('You scanned your own ID.');
+          this.closeScanner();
+          return;
+      }
+
+      const confirmAdd = confirm(`Send friend request to ${contact.name}?`);
+      if (confirmAdd) {
+          // Send request logic via chat service
+          await this.chatService.sendFriendRequest(me.id, me.name, contact.id);
+          alert('Request Sent!');
+          this.appState.set('chat'); 
+      } else {
+          this.closeScanner();
+      }
   }
 }

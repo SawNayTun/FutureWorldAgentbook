@@ -1,0 +1,206 @@
+import { Injectable, signal, effect } from '@angular/core';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getDatabase, ref, push, onValue, Database, off, serverTimestamp, set, get, remove, update } from 'firebase/database';
+
+export interface ChatMessage {
+  id?: string;
+  text: string;
+  senderId: string;
+  timestamp: number;
+}
+
+export interface ChatContact {
+  userId: string;
+  name: string;
+  lastMessage?: string;
+  lastTimestamp?: number;
+  chatId: string;
+}
+
+export interface FriendRequest {
+  senderId: string;
+  senderName: string;
+  timestamp: number;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class ChatService {
+  private app: FirebaseApp | undefined;
+  private db: Database | undefined;
+  
+  // Signals
+  contacts = signal<ChatContact[]>([]);
+  incomingRequests = signal<FriendRequest[]>([]); 
+  activeMessages = signal<ChatMessage[]>([]);
+  isConnected = signal(false);
+
+  constructor() {
+    this.initFirebase();
+  }
+
+  private initFirebase() {
+    const firebaseConfig = {
+      apiKey: "AIzaSyAas8VrbH-tb6FWQRa4JrqEJEZcsOKcwEo",
+      authDomain: "d-management-6bd74.firebaseapp.com",
+      databaseURL: "https://d-management-6bd74-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "d-management-6bd74",
+      storageBucket: "d-management-6bd74.firebasestorage.app",
+      messagingSenderId: "881446635711",
+      appId: "1:881446635711:web:cf755a10a36adfbd339e0a",
+      measurementId: "G-GVF6DEGVJX"
+    };
+
+    try {
+      this.app = initializeApp(firebaseConfig);
+      this.db = getDatabase(this.app);
+      
+      // Monitor connection status properly
+      const connectedRef = ref(this.db, '.info/connected');
+      onValue(connectedRef, (snap) => {
+        this.isConnected.set(!!snap.val());
+      });
+
+    } catch (error) {
+      console.error('Firebase Init Error:', error);
+      this.isConnected.set(false);
+    }
+  }
+
+  // --- 1. Listeners ---
+
+  listenToUserData(myUserId: string) {
+    if (!this.db || !myUserId) return;
+
+    // Listen to Contacts
+    const contactsRef = ref(this.db, `users/${myUserId}/contacts`);
+    onValue(contactsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list: ChatContact[] = Object.values(data);
+        list.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
+        this.contacts.set(list);
+      } else {
+        this.contacts.set([]);
+      }
+    });
+
+    // Listen to Incoming Requests
+    const requestsRef = ref(this.db, `requests/${myUserId}`);
+    onValue(requestsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list: FriendRequest[] = Object.values(data);
+        // Sort by newest
+        list.sort((a, b) => b.timestamp - a.timestamp);
+        this.incomingRequests.set(list);
+      } else {
+        this.incomingRequests.set([]);
+      }
+    });
+  }
+
+  // --- 2. Friend Request Logic ---
+
+  async sendFriendRequest(myId: string, myName: string, targetId: string) {
+    if (!this.db) return;
+    
+    if (myId === targetId) throw new Error("Cannot add yourself.");
+
+    // Write to target's request bucket
+    const requestRef = ref(this.db, `requests/${targetId}/${myId}`);
+    
+    await set(requestRef, {
+      senderId: myId,
+      senderName: myName,
+      timestamp: Date.now()
+    });
+  }
+
+  async acceptFriendRequest(myId: string, myName: string, request: FriendRequest) {
+    if (!this.db) return;
+
+    const otherId = request.senderId;
+    const otherName = request.senderName;
+    const chatId = [myId, otherId].sort().join('_'); // Consistent Chat ID
+
+    const updates: any = {};
+
+    // 1. Add to My Contacts
+    updates[`users/${myId}/contacts/${otherId}`] = {
+      userId: otherId,
+      name: otherName,
+      chatId: chatId,
+      lastTimestamp: Date.now()
+    };
+
+    // 2. Add to Other's Contacts
+    updates[`users/${otherId}/contacts/${myId}`] = {
+      userId: myId,
+      name: myName,
+      chatId: chatId,
+      lastTimestamp: Date.now()
+    };
+
+    // 3. Delete the Request
+    updates[`requests/${myId}/${otherId}`] = null;
+
+    // Perform atomic update
+    await update(ref(this.db), updates);
+  }
+
+  async rejectFriendRequest(myId: string, senderId: string) {
+    if (!this.db) return;
+    await remove(ref(this.db, `requests/${myId}/${senderId}`));
+  }
+
+  // --- 3. Messaging ---
+
+  listenToMessages(chatId: string) {
+    if (!this.db || !chatId) return;
+    this.activeMessages.set([]); 
+
+    const messagesRef = ref(this.db, `messages/${chatId}`);
+    
+    onValue(messagesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const msgList: ChatMessage[] = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        })).sort((a, b) => a.timestamp - b.timestamp);
+        this.activeMessages.set(msgList);
+      } else {
+        this.activeMessages.set([]);
+      }
+    });
+  }
+
+  stopListeningMessages(chatId: string) {
+    if (!this.db || !chatId) return;
+    off(ref(this.db, `messages/${chatId}`));
+  }
+
+  async sendMessage(chatId: string, text: string, senderId: string, myId: string, otherId: string) {
+    if (!this.db) return;
+    
+    // 1. Push Message
+    await push(ref(this.db, `messages/${chatId}`), {
+      text,
+      senderId,
+      timestamp: serverTimestamp()
+    });
+
+    // 2. Update Last Message for both users
+    const db = this.db;
+    // We update specific paths to avoid overwriting the whole contact object if it changed
+    const updates: any = {};
+    updates[`users/${myId}/contacts/${otherId}/lastMessage`] = text;
+    updates[`users/${myId}/contacts/${otherId}/lastTimestamp`] = serverTimestamp();
+    updates[`users/${otherId}/contacts/${myId}/lastMessage`] = text;
+    updates[`users/${otherId}/contacts/${myId}/lastTimestamp`] = serverTimestamp();
+    
+    await update(ref(db), updates);
+  }
+}
