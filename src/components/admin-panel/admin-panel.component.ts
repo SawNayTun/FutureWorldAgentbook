@@ -1,4 +1,3 @@
-
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, computed, ViewChild, ElementRef } from '@angular/core';
 import { DataService, UserData } from '../../services/data.service';
 import { CommonModule } from '@angular/common';
@@ -10,13 +9,12 @@ import { CheckIconComponent } from '../icons/check-icon.component';
 import { DownloadIconComponent } from '../icons/download-icon.component';
 import { UploadIconComponent } from '../icons/upload-icon.component';
 import { PlusIconComponent } from '../icons/plus-icon.component';
-import { DeviceOffIconComponent } from '../icons/device-off-icon.component';
 
 @Component({
   selector: 'app-admin-panel',
   templateUrl: './admin-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, Trash2IconComponent, SettingsIconComponent, UsersIconComponent, ShareIconComponent, CheckIconComponent, DownloadIconComponent, UploadIconComponent, PlusIconComponent, DeviceOffIconComponent]
+  imports: [CommonModule, Trash2IconComponent, SettingsIconComponent, UsersIconComponent, ShareIconComponent, CheckIconComponent, DownloadIconComponent, UploadIconComponent, PlusIconComponent]
 })
 export class AdminPanelComponent implements OnInit {
   private dataService = inject(DataService);

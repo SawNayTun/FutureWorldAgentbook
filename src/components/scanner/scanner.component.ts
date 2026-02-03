@@ -1,9 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, ViewChild, ElementRef, OnDestroy, output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { GoogleGenAI } from "@google/genai";
-import { CameraIconComponent } from '../icons/camera-icon.component';
 import { XCircleIconComponent } from '../icons/x-circle-icon.component';
-import { CheckIconComponent } from '../icons/check-icon.component';
 import { CopyIconComponent } from '../icons/copy-icon.component';
 import { ShareIconComponent } from '../icons/share-icon.component';
 import { ImageIconComponent } from '../icons/image-icon.component';
@@ -13,7 +11,7 @@ import { ChatService } from '../../services/chat.service';
   selector: 'app-scanner',
   templateUrl: './scanner.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, CameraIconComponent, XCircleIconComponent, CheckIconComponent, CopyIconComponent, ShareIconComponent, ImageIconComponent]
+  imports: [CommonModule, XCircleIconComponent, CopyIconComponent, ShareIconComponent, ImageIconComponent]
 })
 export class ScannerComponent implements OnDestroy {
   close = output<void>();
