@@ -5,13 +5,14 @@ import { XCircleIconComponent } from '../icons/x-circle-icon.component';
 import { CopyIconComponent } from '../icons/copy-icon.component';
 import { ShareIconComponent } from '../icons/share-icon.component';
 import { ImageIconComponent } from '../icons/image-icon.component';
+import { CameraIconComponent } from '../icons/camera-icon.component';
 import { ChatService } from '../../services/chat.service';
 
 @Component({
   selector: 'app-scanner',
   templateUrl: './scanner.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, XCircleIconComponent, CopyIconComponent, ShareIconComponent, ImageIconComponent]
+  imports: [CommonModule, XCircleIconComponent, CopyIconComponent, ShareIconComponent, ImageIconComponent, CameraIconComponent]
 })
 export class ScannerComponent implements OnDestroy {
   close = output<void>();
@@ -20,6 +21,7 @@ export class ScannerComponent implements OnDestroy {
   @ViewChild('video') videoElement!: ElementRef<HTMLVideoElement>;
   @ViewChild('canvas') canvasElement!: ElementRef<HTMLCanvasElement>;
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('cameraInput') cameraInput!: ElementRef<HTMLInputElement>;
 
   stream: MediaStream | null = null;
   capturedImage = signal<string | null>(null);
@@ -75,6 +77,13 @@ export class ScannerComponent implements OnDestroy {
     const video = this.videoElement.nativeElement;
     const canvas = this.canvasElement.nativeElement;
     
+    // Check if video is actually playing/ready
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+        // If live capture fails, fallback to system camera
+        this.triggerSystemCamera();
+        return;
+    }
+
     const MAX_SIZE = 1024;
     let width = video.videoWidth;
     let height = video.videoHeight;
@@ -110,10 +119,20 @@ export class ScannerComponent implements OnDestroy {
     }
   }
 
+  // Opens the Gallery / File Picker
   triggerFileUpload() {
     setTimeout(() => {
         if (this.fileInput && this.fileInput.nativeElement) {
             this.fileInput.nativeElement.click();
+        }
+    }, 0);
+  }
+
+  // Opens the Native System Camera directly
+  triggerSystemCamera() {
+    setTimeout(() => {
+        if (this.cameraInput && this.cameraInput.nativeElement) {
+            this.cameraInput.nativeElement.click();
         }
     }, 0);
   }
@@ -190,24 +209,37 @@ export class ScannerComponent implements OnDestroy {
   }
 
   handleDecodedText(text: string): boolean {
+      const cleanText = text.trim();
+
+      // 1. Try decoding URI component (Standard App QR)
       try {
-          // Try decoding URI component first (QR data is encoded in ChatComponent)
-          const decoded = decodeURIComponent(text);
+          const decoded = decodeURIComponent(cleanText);
           const data = JSON.parse(decoded);
           if (data.type === 'fw_user_id' && data.id && data.name) {
                this.userIdFound.emit({ id: data.id, name: data.name });
                return true;
           }
-      } catch(e) {
-          // Try parsing raw text if decode failed
-          try {
-             const data = JSON.parse(text);
-             if (data.type === 'fw_user_id' && data.id && data.name) {
-                 this.userIdFound.emit({ id: data.id, name: data.name });
-                 return true;
-             }
-          } catch(e2) {}
+      } catch(e) {}
+
+      // 2. Try parsing raw JSON (Standard App QR variant)
+      try {
+          const data = JSON.parse(cleanText);
+          if (data.type === 'fw_user_id' && data.id && data.name) {
+              this.userIdFound.emit({ id: data.id, name: data.name });
+              return true;
+          }
+      } catch(e) {}
+
+      // 3. Try Raw String (Mobile HTML Client Compatibility)
+      // Check if it's a simple alphanumeric ID string (e.g., from the mobile chat html)
+      // We exclude strings with spaces to avoid confusing it with betting text
+      if (cleanText.length > 3 && /^[a-zA-Z0-9-_]+$/.test(cleanText) && !cleanText.includes(' ')) {
+          // If we find a raw ID, we don't know the name yet, so we assign a placeholder.
+          // The correct name will be synced when the request is accepted.
+          this.userIdFound.emit({ id: cleanText, name: 'Mobile User' });
+          return true;
       }
+
       return false;
   }
 
@@ -222,10 +254,10 @@ export class ScannerComponent implements OnDestroy {
       const prompt = `
         Analyze the image. It is either:
         1. A handwritten/printed 2D betting list.
-        2. A QR Code containing a User ID JSON object (e.g., {"type":"fw_user_id","id":"...","name":"..."}).
+        2. A QR Code containing a User ID. It could be a JSON object OR a simple ID string.
 
         Task:
-        - If it is a QR Code, extract the JSON content. If the content is URL encoded, output it as is.
+        - If it is a QR Code, extract the content exactly (string or JSON).
         - If it is a Betting List, extract the list in format: \`[Code] [Amount]\` (one per line). Use strict mapping rules: "R"->R, "အပူး"->apu, etc.
         
         Do not explain. Just output the result.

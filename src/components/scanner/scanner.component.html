@@ -11,41 +11,53 @@
     <!-- Camera View -->
     @if (!capturedImage()) {
       <div class="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-        @if (hasPermission() === false) {
-           <div class="text-center p-6 flex flex-col items-center justify-center h-full w-full">
-             <button (click)="triggerFileUpload()" class="w-full max-w-[200px] aspect-square rounded-full bg-slate-800 border-4 border-slate-700 flex flex-col items-center justify-center gap-4 active:scale-95 transition-transform group shadow-2xl shadow-black">
-               <div class="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center text-black group-hover:scale-110 transition-transform">
-                  <app-image-icon [size]="32" [strokeWidth]="2.5"></app-image-icon>
-               </div>
-               <span class="text-amber-500 font-black text-lg">Upload QR / Photo</span>
-             </button>
-           </div>
-        } @else {
-          <video #video autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
-          <!-- Capture Overlay / Guide -->
-          <div class="absolute inset-0 pointer-events-none border-2 border-amber-500/30 m-8 rounded-3xl">
-            <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-amber-500 -mt-0.5 -ml-0.5 rounded-tl-lg"></div>
-            <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-amber-500 -mt-0.5 -mr-0.5 rounded-tr-lg"></div>
-            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-amber-500 -mb-0.5 -ml-0.5 rounded-bl-lg"></div>
-            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-amber-500 -mb-0.5 -mr-0.5 rounded-br-lg"></div>
-          </div>
-          
-          <!-- Controls Container -->
-          <div class="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-8 pb-safe">
-             <!-- Upload Button -->
-            <button (click)="triggerFileUpload()" class="w-12 h-12 rounded-full bg-slate-800/80 backdrop-blur border border-slate-600 flex items-center justify-center active:scale-95 transition-transform text-white shadow-lg relative">
-              <app-image-icon [size]="24"></app-image-icon>
-            </button>
+        
+        <!-- Live Camera Stream (If permissions allow) -->
+        <video #video autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover opacity-60"></video>
+        
+        <!-- Capture Overlay / Guide -->
+        <div class="absolute inset-0 pointer-events-none border-2 border-amber-500/30 m-8 rounded-3xl z-10">
+          <div class="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-amber-500 -mt-0.5 -ml-0.5 rounded-tl-lg"></div>
+          <div class="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-amber-500 -mt-0.5 -mr-0.5 rounded-tr-lg"></div>
+          <div class="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-amber-500 -mb-0.5 -ml-0.5 rounded-bl-lg"></div>
+          <div class="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-amber-500 -mb-0.5 -mr-0.5 rounded-br-lg"></div>
+        </div>
+        
+        <!-- Center Content -->
+        <div class="absolute inset-0 flex flex-col items-center justify-center z-20 pointer-events-none">
+            @if (hasPermission() === false) {
+                <p class="text-rose-500 font-bold mb-4 bg-black/50 px-3 py-1 rounded">Camera Permission Denied</p>
+            }
+        </div>
 
-            <!-- Capture Button -->
-            <button (click)="capture()" class="w-20 h-20 rounded-full bg-white border-4 border-slate-300 flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-black/50">
-              <div class="w-16 h-16 rounded-full bg-amber-500 border-2 border-white"></div>
-            </button>
+        <!-- Controls Container -->
+        <div class="absolute bottom-0 left-0 right-0 pb-safe bg-gradient-to-t from-black/90 to-transparent pt-10 pb-6 px-6 z-30">
+            <div class="flex items-end justify-center gap-4">
+                
+                <!-- 1. System Camera Button (Main Solution) -->
+                <button (click)="triggerSystemCamera()" class="flex flex-col items-center gap-1 group">
+                    <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform group-active:border-amber-500">
+                        <app-camera-icon [size]="24"></app-camera-icon>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-300 uppercase">Phone Cam</span>
+                </button>
 
-            <!-- Spacer for centering -->
-             <div class="w-12"></div>
-          </div>
-        }
+                <!-- 2. Live Capture Button -->
+                <button (click)="capture()" class="w-20 h-20 rounded-full bg-white border-4 border-slate-300 flex items-center justify-center active:scale-95 transition-transform shadow-lg shadow-black/50 mx-2">
+                    <div class="w-16 h-16 rounded-full bg-amber-500 border-2 border-white"></div>
+                </button>
+
+                <!-- 3. Gallery Upload -->
+                <button (click)="triggerFileUpload()" class="flex flex-col items-center gap-1 group">
+                    <div class="w-14 h-14 rounded-full bg-slate-800 border border-slate-600 flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform group-active:border-amber-500">
+                        <app-image-icon [size]="24"></app-image-icon>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-300 uppercase">Gallery</span>
+                </button>
+            </div>
+            <p class="text-center text-[10px] text-slate-500 mt-4">ဘယ်/ညာ ခလုတ်များကိုနှိပ်၍ ဖုန်းကင်မရာ (သို့) ပုံရွေးပါ</p>
+        </div>
+
       </div>
     } @else {
       <!-- Review & Edit View -->
@@ -91,7 +103,11 @@
     
     <!-- Hidden Elements -->
     <canvas #canvas class="hidden"></canvas>
-    <!-- capture="environment" forces the back camera on Android -->
+    
+    <!-- File Input: Gallery -->
     <input #fileInput type="file" accept="image/*" class="hidden" (change)="handleFile($event)">
+    
+    <!-- File Input: System Camera (Forces Camera App) -->
+    <input #cameraInput type="file" accept="image/*" capture="environment" class="hidden" (change)="handleFile($event)">
   </div>
 </div>

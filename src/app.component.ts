@@ -279,7 +279,11 @@ export class AppComponent implements OnInit {
           return;
       }
 
-      const confirmAdd = confirm(`Send friend request to ${contact.name}?`);
+      // If scanning a mobile QR, name might be 'Mobile User'. 
+      // We show the ID for confirmation if the name is generic.
+      const displayName = contact.name === 'Mobile User' ? `ID: ${contact.id}` : contact.name;
+      const confirmAdd = confirm(`Send friend request to ${displayName}?`);
+      
       if (confirmAdd) {
           // Send request logic via chat service
           await this.chatService.sendFriendRequest(me.id, me.name, contact.id);
