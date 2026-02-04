@@ -4,7 +4,9 @@ import { getDatabase, ref, push, onValue, Database, off, serverTimestamp, set, g
 
 export interface ChatMessage {
   id?: string;
-  text: string;
+  text?: string; // Content payload (text or base64 image)
+  imageUrl?: string; // For backward compatibility or distinct field
+  type?: 'text' | 'image';
   senderId: string;
   timestamp: number;
 }
@@ -182,23 +184,33 @@ export class ChatService {
     off(ref(this.db, `messages/${chatId}`));
   }
 
-  async sendMessage(chatId: string, text: string, senderId: string, myId: string, otherId: string) {
+  async sendMessage(chatId: string, content: string, senderId: string, myId: string, otherId: string, type: 'text' | 'image' = 'text') {
     if (!this.db) return;
     
-    // 1. Push Message
-    await push(ref(this.db, `messages/${chatId}`), {
-      text,
+    const messageData: any = {
       senderId,
-      timestamp: serverTimestamp()
-    });
+      timestamp: serverTimestamp(),
+      type
+    };
+
+    if (type === 'image') {
+      messageData.imageUrl = content;
+      messageData.text = 'Sent an image'; // Fallback text for notifications
+    } else {
+      messageData.text = content;
+    }
+
+    // 1. Push Message
+    await push(ref(this.db, `messages/${chatId}`), messageData);
 
     // 2. Update Last Message for both users
     const db = this.db;
-    // We update specific paths to avoid overwriting the whole contact object if it changed
+    const lastMsgPreview = type === 'image' ? 'Sent an image' : content;
+
     const updates: any = {};
-    updates[`users/${myId}/contacts/${otherId}/lastMessage`] = text;
+    updates[`users/${myId}/contacts/${otherId}/lastMessage`] = lastMsgPreview;
     updates[`users/${myId}/contacts/${otherId}/lastTimestamp`] = serverTimestamp();
-    updates[`users/${otherId}/contacts/${myId}/lastMessage`] = text;
+    updates[`users/${otherId}/contacts/${myId}/lastMessage`] = lastMsgPreview;
     updates[`users/${otherId}/contacts/${myId}/lastTimestamp`] = serverTimestamp();
     
     await update(ref(db), updates);

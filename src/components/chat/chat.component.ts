@@ -8,6 +8,7 @@ import { PlusIconComponent } from '../icons/plus-icon.component';
 import { BellIconComponent } from '../icons/bell-icon.component';
 import { CheckIconComponent } from '../icons/check-icon.component';
 import { MessageCircleIconComponent } from '../icons/message-circle-icon.component';
+import { ImageIconComponent } from '../icons/image-icon.component';
 
 @Component({
   selector: 'app-chat',
@@ -132,26 +133,46 @@ import { MessageCircleIconComponent } from '../icons/message-circle-icon.compone
           <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 scrollbar-hide" #scrollContainer>
             @for (msg of messages(); track msg.id) {
                 <div class="flex flex-col" [class.items-end]="msg.senderId === user().id" [class.items-start]="msg.senderId !== user().id">
-                    <div 
-                        class="max-w-[80%] px-4 py-2 rounded-2xl text-sm font-medium leading-snug break-words"
-                        [class.bg-amber-600]="msg.senderId === user().id"
-                        [class.text-white]="msg.senderId === user().id"
-                        [class.rounded-tr-sm]="msg.senderId === user().id"
-                        [class.bg-slate-800]="msg.senderId !== user().id"
-                        [class.text-slate-200]="msg.senderId !== user().id"
-                        [class.rounded-tl-sm]="msg.senderId !== user().id"
-                    >
-                        {{ msg.text }}
-                    </div>
-                    <span class="text-[9px] text-slate-500 mt-1 px-1">
-                        {{ msg.timestamp | date:'shortTime' }}
-                    </span>
+                    
+                    @if(msg.type === 'image' && msg.imageUrl) {
+                        <div class="relative group">
+                            <img [src]="msg.imageUrl" 
+                                class="max-w-[70%] max-h-60 rounded-xl border border-slate-700 object-cover cursor-pointer"
+                                (click)="viewImage.set(msg.imageUrl)"
+                            >
+                            <span class="absolute bottom-1 right-2 text-[9px] text-white/80 bg-black/50 px-1 rounded">
+                                {{ msg.timestamp | date:'shortTime' }}
+                            </span>
+                        </div>
+                    } @else {
+                        <div 
+                            class="max-w-[80%] px-4 py-2 rounded-2xl text-sm font-medium leading-snug break-words"
+                            [class.bg-amber-600]="msg.senderId === user().id"
+                            [class.text-white]="msg.senderId === user().id"
+                            [class.rounded-tr-sm]="msg.senderId === user().id"
+                            [class.bg-slate-800]="msg.senderId !== user().id"
+                            [class.text-slate-200]="msg.senderId !== user().id"
+                            [class.rounded-tl-sm]="msg.senderId !== user().id"
+                        >
+                            {{ msg.text }}
+                        </div>
+                        <span class="text-[9px] text-slate-500 mt-1 px-1">
+                            {{ msg.timestamp | date:'shortTime' }}
+                        </span>
+                    }
+                    
                 </div>
             }
           </div>
 
           <!-- Input Area -->
           <div class="bg-slate-900 p-3 pb-safe border-t border-slate-800 flex gap-2 items-end" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));">
+            
+            <!-- Image Button -->
+             <button (click)="triggerImageUpload()" class="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 active:text-amber-400 active:border-amber-400 transition-colors shrink-0">
+                <app-image-icon [size]="20"></app-image-icon>
+             </button>
+
             <textarea 
                 #msgInput
                 rows="1"
@@ -168,8 +189,24 @@ import { MessageCircleIconComponent } from '../icons/message-circle-icon.compone
                 <app-upload-icon [size]="20" class="rotate-90"></app-upload-icon>
             </button>
           </div>
+          
+          <input #imageInput type="file" accept="image/*" class="hidden" (change)="handleImageSelected($event)">
       }
       
+      <!-- MODAL: Image View (Lightbox) -->
+      @if (viewImage()) {
+          <div class="absolute inset-0 z-[70] bg-black flex flex-col animate-in fade-in duration-200" (click)="viewImage.set(null)">
+              <div class="absolute top-4 right-4 z-[80]">
+                 <button class="bg-black/50 p-2 rounded-full text-white">
+                    <app-x-circle-icon [size]="24"></app-x-circle-icon>
+                 </button>
+              </div>
+              <div class="flex-1 flex items-center justify-center p-2">
+                 <img [src]="viewImage()" class="max-w-full max-h-full object-contain">
+              </div>
+          </div>
+      }
+
       <!-- MODAL: My QR -->
       @if (showMyQr()) {
           <div class="absolute inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
@@ -214,7 +251,7 @@ import { MessageCircleIconComponent } from '../icons/message-circle-icon.compone
       }
     </div>
   `,
-  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent],
+  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatComponent implements AfterViewChecked {
@@ -234,8 +271,10 @@ export class ChatComponent implements AfterViewChecked {
   showMyQr = signal(false);
   showAddContact = signal(false);
   newContactId = signal('');
+  viewImage = signal<string | null>(null);
   
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
+  @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
 
   constructor() {
     effect(() => {
@@ -288,9 +327,56 @@ export class ChatComponent implements AfterViewChecked {
 
     if (!text || !chat || !me) return;
 
-    this.chatService.sendMessage(chat.chatId, text, me.id, me.id, chat.userId);
+    this.chatService.sendMessage(chat.chatId, text, me.id, me.id, chat.userId, 'text');
     this.messageInput.set('');
   }
+
+  // --- Image Handling ---
+
+  triggerImageUpload() {
+      if(this.imageInput) this.imageInput.nativeElement.click();
+  }
+
+  handleImageSelected(event: Event) {
+      const input = event.target as HTMLInputElement;
+      if (input.files && input.files[0]) {
+          const file = input.files[0];
+          this.compressAndSendImage(file);
+      }
+      input.value = '';
+  }
+
+  compressAndSendImage(file: File) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 800; // Resize to max 800px width
+              const scaleSize = MAX_WIDTH / img.width;
+              const width = (scaleSize < 1) ? MAX_WIDTH : img.width;
+              const height = (scaleSize < 1) ? img.height * scaleSize : img.height;
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              // Compress to JPEG 0.6 quality
+              const base64 = canvas.toDataURL('image/jpeg', 0.6);
+              
+              const chat = this.activeChat();
+              const me = this.user();
+              if (chat && me) {
+                   this.chatService.sendMessage(chat.chatId, base64, me.id, me.id, chat.userId, 'image');
+              }
+          };
+          img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+  }
+
+  // --- Utility ---
 
   getQrData() {
       const data = {
