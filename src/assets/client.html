@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2D Mobile Messenger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: sans-serif; }
+        .msg-bubble { max-width: 80%; padding: 10px; border-radius: 12px; margin-bottom: 8px; font-size: 14px; word-wrap: break-word; }
+        .msg-sent { background-color: #4f46e5; align-self: flex-end; color: white; border-bottom-right-radius: 2px; }
+        .msg-received { background-color: #334155; align-self: flex-start; color: white; border-bottom-left-radius: 2px; }
+        input, button { outline: none; }
+        #qrcode img { margin: 0 auto; border: 4px solid white; border-radius: 4px; }
+        
+        /* Locked State Styles */
+        .locked-input { background-color: #451a1a !important; border-color: #7f1d1d !important; color: #fca5a5 !important; }
+        .locked-input::placeholder { color: #fca5a5 !important; }
+
+        /* Image Msg Styles */
+        .msg-img { max-width: 100%; border-radius: 8px; margin-top: 4px; cursor: pointer; border: 1px solid #475569; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="loginScreen" class="flex flex-col items-center justify-center h-full p-6 space-y-6">
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-indigo-400 mb-2">Mobile Chat</h1>
+            <p class="text-slate-400 text-sm">PC Software နှင့်ချိတ်ဆက်ရန်</p>
+        </div>
+        
+        <div class="w-full bg-slate-800 p-4 rounded-lg border border-slate-700">
+            <label class="text-xs text-slate-400 block mb-1">သင့်အမည် (Name)</label>
+            <input type="text" id="myName" placeholder="ဥပမာ - Agent 1" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white mb-4">
+            
+            <label class="text-xs text-slate-400 block mb-1">သင့် ID (ဖုန်းနံပါတ် သို့မဟုတ် ကြိုက်ရာပေးပါ)</label>
+            <input type="text" id="myId" placeholder="ဥပမာ - 09123456789" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white mb-4 font-mono">
+            
+            <button onclick="login()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded transition">စတင်မည်</button>
+        </div>
+    </div>
+
+    <!-- 2. CHAT SCREEN (Initially Hidden) -->
+    <div id="chatScreen" class="hidden flex-col h-full relative">
+        <!-- Header -->
+        <div class="bg-slate-800 p-3 border-b border-slate-700 flex justify-between items-center shadow-md z-10">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold" id="avatar">A</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-bold text-white text-base" id="headerTitle">Connecting...</h2>
+                        <span id="lockBadge" class="hidden bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">LOCKED</span>
+                    </div>
+                    <p class="text-[10px] text-green-400 flex items-center gap-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Online
+                    </p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="showMyQr()" class="bg-white text-black p-2 rounded-full shadow hover:bg-gray-200" title="My QR Code">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4h2v-4zM5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                </button>
+                <button onclick="showAddModal()" class="bg-slate-700 text-white p-2 rounded-full shadow hover:bg-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notification Banner -->
+        <div id="requestBanner" class="hidden bg-indigo-900 text-white p-2 px-4 text-xs flex justify-between items-center">
+            <span>New Friend Request!</span>
+            <button onclick="acceptRequest()" class="bg-green-500 px-2 py-1 rounded text-white font-bold">Accept</button>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="messagesArea" class="flex-1 overflow-y-auto p-4 flex flex-col space-y-2 bg-slate-900">
+            <div class="text-center text-slate-500 text-xs mt-10">
+                ချိတ်ဆက်ထားခြင်း မရှိသေးပါ<br><br>
+                ညာဘက်အပေါ်ထောင့်က <br>QR Code ကိုနှိပ်ပြီး PC သို့ပို့ပေးပါ
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-slate-800 p-3 border-t border-slate-700 flex gap-2 items-end">
+             <!-- Image Button -->
+             <button onclick="document.getElementById('imageInput').click()" class="bg-slate-700 text-slate-400 p-3 rounded-full hover:text-indigo-400 hover:bg-slate-600 transition shrink-0" id="imgBtn">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </button>
+            <input type="file" id="imageInput" accept="image/*" class="hidden" onchange="handleImage(event)">
+
+            <input type="text" id="msgInput" placeholder="စာရင်းရိုက်ထည့်ပါ..." class="flex-1 bg-slate-900 text-white rounded-full px-4 py-3 border border-slate-600 focus:border-indigo-500 transition-colors" onkeyup="if(event.key === 'Enter') sendMessage()">
+            <button id="sendBtn" onclick="sendMessage()" class="bg-indigo-600 text-white p-3 rounded-full shadow-lg hover:bg-indigo-500 transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-600 shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black/90 hidden items-center justify-center p-6 z-50" onclick="closeQrModal()">
+        <div class="bg-white p-6 rounded-lg w-full max-w-sm flex flex-col items-center" onclick="event.stopPropagation()">
+            <h3 class="text-xl font-bold text-slate-800 mb-2">My QR Code</h3>
+            <p class="text-xs text-slate-500 mb-4 text-center">PC Software တွင် "Add Friend -> QR Image" နေရာ၌ ဤပုံကို ထည့်သွင်းပါ။</p>
+            
+            <div id="qrcode" class="p-2 border-2 border-slate-800 rounded mb-4"></div>
+            
+            <div class="bg-slate-100 p-2 rounded w-full text-center mb-4">
+                <p class="text-xs text-slate-500 uppercase">My ID</p>
+                <p class="font-mono font-bold text-lg text-slate-800" id="displayId"></p>
+            </div>
+
+            <button onclick="closeQrModal()" class="w-full bg-slate-800 text-white py-3 rounded font-bold">ပိတ်မည်</button>
+        </div>
+    </div>
+
+    <!-- Add Friend Modal (Manual ID) -->
+    <div id="addModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center p-6 z-50">
+        <div class="bg-slate-800 p-6 rounded-lg w-full max-w-sm border border-slate-600">
+            <h3 class="text-xl font-bold text-white mb-4">PC ID ထည့်ပါ</h3>
+            <input type="text" id="targetIdInput" placeholder="Enter ID..." class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white mb-4 font-mono text-sm">
+            <div class="flex gap-2">
+                <button onclick="closeAddModal()" class="flex-1 bg-slate-600 text-white py-2 rounded">ပိတ်မည်</button>
+                <button onclick="sendRequest()" class="flex-1 bg-indigo-600 text-white py-2 rounded">ချိတ်ဆက်မည်</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image View Modal -->
+    <div id="imgModal" class="fixed inset-0 bg-black z-[60] hidden flex-col" onclick="closeImgModal()">
+        <button class="absolute top-4 right-4 text-white bg-white/20 p-2 rounded-full z-50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div class="flex-1 flex items-center justify-center p-2">
+            <img id="fullImage" src="" class="max-w-full max-h-full object-contain">
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAas8VrbH-tb6FWQRa4JrqEJEZcsOKcwEo",
+            authDomain: "d-management-6bd74.firebaseapp.com",
+            databaseURL: "https://d-management-6bd74-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "d-management-6bd74",
+            storageBucket: "d-management-6bd74.firebasestorage.app",
+            messagingSenderId: "881446635711",
+            appId: "1:881446635711:web:cf755a10a36adfbd339e0a",
+            measurementId: "G-GVF6DEGVJX"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let myId = localStorage.getItem('helper_id') || '';
+        let myName = localStorage.getItem('helper_name') || '';
+        let activeChatId = null;
+        let targetId = null;
+        let isChatLocked = false;
+        let pendingRequest = null;
+
+        // --- Global Functions attached to Window ---
+        window.login = function() {
+            const nameInput = document.getElementById('myName').value.trim();
+            const idInput = document.getElementById('myId').value.trim();
+
+            if(!nameInput || !idInput) { alert("အချက်အလက်ပြည့်စုံစွာ ထည့်ပါ"); return; }
+
+            myId = idInput;
+            myName = nameInput;
+            localStorage.setItem('helper_id', myId);
+            localStorage.setItem('helper_name', myName);
+
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('chatScreen').classList.replace('hidden', 'flex');
+            document.getElementById('displayId').innerText = myId;
+            document.getElementById('avatar').innerText = myName.charAt(0).toUpperCase();
+            
+            initFirebaseListeners();
+        }
+
+        // Auto Login
+        if(myId && myName) {
+            document.getElementById('myName').value = myName;
+            document.getElementById('myId').value = myId;
+        }
+
+        // --- Firebase Logic ---
+        function initFirebaseListeners() {
+            // 1. Listen for CONTACTS (Successfully connected)
+            const contactsRef = ref(db, `users/${myId}/contacts`);
+            onValue(contactsRef, (snapshot) => {
+                const data = snapshot.val();
+                if(data) {
+                    const contacts = Object.values(data);
+                    // Use the most recently updated contact
+                    const lastContact = contacts.sort((a,b) => b.lastTimestamp - a.lastTimestamp)[0];
+                    
+                    targetId = lastContact.userId;
+                    activeChatId = lastContact.chatId;
+                    
+                    // CHECK LOCK STATUS
+                    isChatLocked = lastContact.isLocked === true;
+                    updateLockUI(isChatLocked);
+
+                    document.getElementById('headerTitle').innerText = lastContact.name;
+                    listenForMessages(activeChatId);
+                }
+            });
+
+            // 2. Listen for FRIEND REQUESTS
+            const requestsRef = ref(db, `requests/${myId}`);
+            onValue(requestsRef, (snapshot) => {
+                const data = snapshot.val();
+                if(data) {
+                    const reqs = Object.values(data);
+                    if(reqs.length > 0) {
+                        pendingRequest = reqs[0]; // Take first request
+                        document.getElementById('requestBanner').classList.replace('hidden', 'flex');
+                        document.getElementById('requestBanner').querySelector('span').innerText = `${pendingRequest.senderName} ထံမှ Request ရောက်နေပါသည်`;
+                    }
+                } else {
+                    document.getElementById('requestBanner').classList.replace('flex', 'hidden');
+                    pendingRequest = null;
+                }
+            });
+        }
+
+        function updateLockUI(locked) {
+            const input = document.getElementById('msgInput');
+            const btn = document.getElementById('sendBtn');
+            const badge = document.getElementById('lockBadge');
+            const imgBtn = document.getElementById('imgBtn');
+
+            if(locked) {
+                // Disable Inputs
+                input.disabled = true;
+                input.value = '';
+                input.placeholder = "⛔ စာရင်းပိတ်ထားပါသည်";
+                input.classList.add('locked-input');
+                
+                // Disable Buttons
+                btn.disabled = true;
+                imgBtn.disabled = true;
+                imgBtn.classList.add('opacity-50');
+                
+                // Show Badge
+                badge.classList.remove('hidden');
+            } else {
+                // Enable Inputs
+                input.disabled = false;
+                input.placeholder = "စာရင်းရိုက်ထည့်ပါ...";
+                input.classList.remove('locked-input');
+                
+                // Enable Buttons
+                btn.disabled = false;
+                imgBtn.disabled = false;
+                imgBtn.classList.remove('opacity-50');
+                
+                // Hide Badge
+                badge.classList.add('hidden');
+            }
+        }
+
+        function listenForMessages(chatId) {
+            const messagesRef = ref(db, `messages/${chatId}`);
+            onValue(messagesRef, (snapshot) => {
+                const data = snapshot.val();
+                const msgArea = document.getElementById('messagesArea');
+                msgArea.innerHTML = ''; 
+
+                if(data) {
+                    const msgs = Object.values(data).sort((a,b) => a.timestamp - b.timestamp);
+                    msgs.forEach(msg => {
+                        const div = document.createElement('div');
+                        div.className = `msg-bubble ${msg.senderId === myId ? 'msg-sent' : 'msg-received'}`;
+                        
+                        // IMAGE DISPLAY LOGIC
+                        if (msg.type === 'image' || msg.imageUrl) {
+                             const src = msg.imageUrl || msg.text;
+                             div.innerHTML = `<img src="${src}" class="msg-img" onclick="openImgModal(this.src)">`;
+                        } else {
+                            // TEXT DISPLAY
+                            let content = msg.text;
+                            if (msg.status === 'accepted') {
+                                content += `<br><span class="text-[10px] text-green-300">✅ လက်ခံပြီး</span>`;
+                            }
+                            div.innerHTML = content;
+                        }
+                        
+                        msgArea.appendChild(div);
+                    });
+                    msgArea.scrollTop = msgArea.scrollHeight;
+                } else {
+                    msgArea.innerHTML = '<div class="text-center text-slate-500 text-xs mt-10">စကားပြော စတင်နိုင်ပါပြီ</div>';
+                }
+            });
+        }
+
+        // --- Actions ---
+        window.sendMessage = async function() {
+            if(isChatLocked) {
+                alert("စာရင်းပိတ်ထားသောကြောင့် ပို့၍မရပါ။");
+                return;
+            }
+
+            const input = document.getElementById('msgInput');
+            const text = input.value.trim();
+            if(!text || !targetId) return;
+
+            input.value = ''; 
+            
+            const chatId = [myId, targetId].sort().join('_');
+            await push(ref(db, `messages/${chatId}`), {
+                text: text,
+                senderId: myId,
+                timestamp: serverTimestamp()
+            });
+
+            const updates = {};
+            updates[`users/${myId}/contacts/${targetId}/lastMessage`] = text;
+            updates[`users/${myId}/contacts/${targetId}/lastTimestamp`] = serverTimestamp();
+            updates[`users/${targetId}/contacts/${myId}/lastMessage`] = text;
+            updates[`users/${targetId}/contacts/${myId}/lastTimestamp`] = serverTimestamp();
+            
+            await update(ref(db), updates);
+        }
+
+        window.sendRequest = async function() {
+            const targetInput = document.getElementById('targetIdInput').value.trim();
+            if(!targetInput) return;
+            try {
+                await set(ref(db, `requests/${targetInput}/${myId}`), {
+                    senderId: myId,
+                    senderName: myName,
+                    timestamp: Date.now()
+                });
+                alert("Request ပို့လိုက်ပါပြီ။");
+                closeAddModal();
+            } catch(e) { alert("ID မှားယွင်းနေပါသည်။"); }
+        }
+
+        window.acceptRequest = async function() {
+            if(!pendingRequest) return;
+            const senderId = pendingRequest.senderId;
+            const senderName = pendingRequest.senderName;
+            const chatId = [myId, senderId].sort().join('_');
+
+            const updates = {};
+            updates[`users/${myId}/contacts/${senderId}`] = { userId: senderId, name: senderName, chatId, lastTimestamp: Date.now() };
+            updates[`users/${senderId}/contacts/${myId}`] = { userId: myId, name: myName, chatId, lastTimestamp: Date.now() };
+            updates[`requests/${myId}/${senderId}`] = null;
+
+            await update(ref(db), updates);
+            alert("လက်ခံလိုက်ပါပြီ! စကားစပြောနိုင်ပါပြီ။");
+        }
+
+        // --- Image Upload Logic ---
+        window.handleImage = function(e) {
+            if(isChatLocked) { alert("Locked"); return; }
+
+            const file = e.target.files[0];
+            if(!file) return;
+
+            // Simple compressor logic
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const scaleSize = MAX_WIDTH / img.width;
+                    const width = (scaleSize < 1) ? MAX_WIDTH : img.width;
+                    const height = (scaleSize < 1) ? img.height * scaleSize : img.height;
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Compress to 0.6
+                    const base64 = canvas.toDataURL('image/jpeg', 0.6);
+                    sendImageMsg(base64);
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+
+        async function sendImageMsg(base64) {
+            if(!targetId) return;
+             const chatId = [myId, targetId].sort().join('_');
+             
+             await push(ref(db, `messages/${chatId}`), {
+                type: 'image',
+                imageUrl: base64,
+                text: 'Sent an image',
+                senderId: myId,
+                timestamp: serverTimestamp()
+             });
+
+             const updates = {};
+             const txt = 'Sent an image';
+             updates[`users/${myId}/contacts/${targetId}/lastMessage`] = txt;
+             updates[`users/${myId}/contacts/${targetId}/lastTimestamp`] = serverTimestamp();
+             updates[`users/${targetId}/contacts/${myId}/lastMessage`] = txt;
+             updates[`users/${targetId}/contacts/${myId}/lastTimestamp`] = serverTimestamp();
+            
+             await update(ref(db), updates);
+        }
+
+        // --- Modal & QR Logic ---
+        let qrObj = null;
+        window.showMyQr = function() {
+            document.getElementById('qrModal').classList.replace('hidden', 'flex');
+            document.getElementById('displayId').innerText = myId;
+            
+            // Generate QR
+            document.getElementById('qrcode').innerHTML = '';
+            qrObj = new QRCode(document.getElementById("qrcode"), {
+                text: myId,
+                width: 200,
+                height: 200,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        window.closeQrModal = () => document.getElementById('qrModal').classList.replace('flex', 'hidden');
+        window.showAddModal = () => document.getElementById('addModal').classList.replace('hidden', 'flex');
+        window.closeAddModal = () => document.getElementById('addModal').classList.replace('flex', 'hidden');
+        
+        window.openImgModal = (src) => {
+            document.getElementById('fullImage').src = src;
+            document.getElementById('imgModal').classList.replace('hidden', 'flex');
+        }
+        window.closeImgModal = () => document.getElementById('imgModal').classList.replace('flex', 'hidden');
+
+    </script>
+</body>
+</html>
