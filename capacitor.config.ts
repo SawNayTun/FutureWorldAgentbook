@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.futureworld.app',
   appName: 'Future World',
-  webDir: 'dist',
+  webDir: 'dist/browser',
   server: {
     androidScheme: 'https'
   }
