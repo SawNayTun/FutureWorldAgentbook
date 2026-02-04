@@ -15,7 +15,12 @@
         #qrcode img { margin: 0 auto; border: 4px solid white; border-radius: 4px; }
         
         /* Locked State Styles */
-        .locked-input { background-color: #451a1a !important; border-color: #7f1d1d !important; color: #fca5a5 !important; }
+        .locked-input { 
+            background-color: #451a1a !important; 
+            border-color: #7f1d1d !important; 
+            color: #fca5a5 !important; 
+            cursor: not-allowed;
+        }
         .locked-input::placeholder { color: #fca5a5 !important; }
 
         /* Image Msg Styles */
@@ -72,6 +77,11 @@
         <div id="requestBanner" class="hidden bg-indigo-900 text-white p-2 px-4 text-xs flex justify-between items-center">
             <span>New Friend Request!</span>
             <button onclick="acceptRequest()" class="bg-green-500 px-2 py-1 rounded text-white font-bold">Accept</button>
+        </div>
+
+        <!-- Toast Notification -->
+        <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-300 opacity-0 translate-y-[-10px] z-50 text-sm font-bold pointer-events-none">
+            Notification
         </div>
 
         <!-- Messages Area -->
@@ -159,8 +169,10 @@
         let myName = localStorage.getItem('helper_name') || '';
         let activeChatId = null;
         let targetId = null;
+        
         let isChatLocked = false;
         let pendingRequest = null;
+        let previousLockState = false; 
 
         // --- Global Functions attached to Window ---
         window.login = function() {
@@ -203,7 +215,20 @@
                     activeChatId = lastContact.chatId;
                     
                     // CHECK LOCK STATUS
-                    isChatLocked = lastContact.isLocked === true;
+                    const currentLocked = lastContact.isLocked === true;
+                    
+                    // Detect UNLOCK event
+                    if (previousLockState === true && currentLocked === false) {
+                        showToast("✅ ဒိုင်မှ စာရင်းပြန်ဖွင့်ပေးလိုက်ပါပြီ");
+                    }
+                    // Detect LOCK event
+                    else if (previousLockState === false && currentLocked === true) {
+                        showToast("⛔ ဒိုင်မှ စာရင်းပိတ်လိုက်ပါပြီ");
+                    }
+
+                    previousLockState = currentLocked;
+                    isChatLocked = currentLocked;
+                    
                     updateLockUI(isChatLocked);
 
                     document.getElementById('headerTitle').innerText = lastContact.name;
@@ -236,31 +261,27 @@
             const imgBtn = document.getElementById('imgBtn');
 
             if(locked) {
-                // Disable Inputs
+                // LOCK UI
                 input.disabled = true;
-                input.value = '';
+                input.value = ''; // Clear typed text when locked
                 input.placeholder = "⛔ စာရင်းပိတ်ထားပါသည်";
                 input.classList.add('locked-input');
                 
-                // Disable Buttons
                 btn.disabled = true;
                 imgBtn.disabled = true;
                 imgBtn.classList.add('opacity-50');
-                
-                // Show Badge
+
                 badge.classList.remove('hidden');
             } else {
-                // Enable Inputs
+                // UNLOCK UI (Restore functionality)
                 input.disabled = false;
                 input.placeholder = "စာရင်းရိုက်ထည့်ပါ...";
                 input.classList.remove('locked-input');
                 
-                // Enable Buttons
                 btn.disabled = false;
                 imgBtn.disabled = false;
                 imgBtn.classList.remove('opacity-50');
-                
-                // Hide Badge
+
                 badge.classList.add('hidden');
             }
         }
@@ -298,6 +319,16 @@
                     msgArea.innerHTML = '<div class="text-center text-slate-500 text-xs mt-10">စကားပြော စတင်နိုင်ပါပြီ</div>';
                 }
             });
+        }
+
+        // --- UI Helpers ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.remove('opacity-0', 'translate-y-[-10px]');
+            setTimeout(() => {
+                t.classList.add('opacity-0', 'translate-y-[-10px]');
+            }, 3000);
         }
 
         // --- Actions ---
@@ -413,7 +444,7 @@
              await update(ref(db), updates);
         }
 
-        // --- Modal & QR Logic ---
+        // --- QR Logic ---
         let qrObj = null;
         window.showMyQr = function() {
             document.getElementById('qrModal').classList.replace('hidden', 'flex');
@@ -431,6 +462,7 @@
             });
         }
 
+        // Modal Toggles
         window.closeQrModal = () => document.getElementById('qrModal').classList.replace('flex', 'hidden');
         window.showAddModal = () => document.getElementById('addModal').classList.replace('hidden', 'flex');
         window.closeAddModal = () => document.getElementById('addModal').classList.replace('flex', 'hidden');
