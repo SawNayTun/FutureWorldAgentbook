@@ -14,6 +14,7 @@ export class ReceiptComponent {
   dataList = input.required<DataItem[]>();
   totalAmount = input.required<number>();
   totalCount = input.required<number>();
+  currency = input.required<string>();
 
   currentDate = new Date();
 }

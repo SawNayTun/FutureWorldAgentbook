@@ -6,6 +6,15 @@
         <span class="text-slate-400 text-[9px] font-black uppercase">{{ personalShopName() }}</span>
         <app-edit3-icon [size]="10" class="text-slate-600"></app-edit3-icon>
       </button>
+
+      <button (click)="toggleMode()" class="px-3 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-black text-amber-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm">
+        {{ mode() }}
+      </button>
+
+      <button (click)="toggleCurrency()" class="px-3 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-black text-emerald-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm">
+        {{ currency() }}
+      </button>
+
       @if (isEditingName()) {
         <input 
             #shopNameInput
@@ -22,7 +31,7 @@
     <div class="flex gap-2 mb-2">
       <div class="flex-1 space-y-1.5">
         <input 
-            #numRef type="text" inputMode="decimal" placeholder="ဂဏန်း" 
+            #numRef type="text" inputMode="decimal" [placeholder]="mode() + ' ဂဏန်း'" 
             class="w-full bg-slate-800 border border-slate-700 py-2 rounded-lg font-black text-center text-base outline-none text-white focus:border-amber-500 transition-colors"
             [value]="numInput()" (input)="numInput.set($any($event.target).value)"
         />
@@ -44,7 +53,7 @@
     </div>
     
     <div class="grid grid-cols-5 gap-1">
-      @for (k of modButtons; track k) {
+      @for (k of modButtons(); track k) {
         @let isActive = activeModButton() === k;
         <button 
           (click)="applyMode(k)" 
@@ -139,7 +148,7 @@
       </button>
 
       <div class="px-2 min-w-[70px] border-l border-slate-800 text-right">
-        <p class="text-[12px] font-black text-amber-400 leading-none">{{ totalAmount().toLocaleString() }}</p>
+        <p class="text-[12px] font-black text-amber-400 leading-none">{{ totalAmount().toLocaleString() }} {{ currency() }}</p>
         <p class="text-[7px] text-slate-500 font-black mt-1 uppercase tracking-tighter">Total</p>
       </div>
 
@@ -155,6 +164,7 @@
     [shopName]="personalShopName()"
     [dataList]="dataList()"
     [totalAmount]="totalAmount()"
-    [totalCount]="totalCount()">
+    [totalCount]="totalCount()"
+    [currency]="currency()">
   </app-receipt>
 }
