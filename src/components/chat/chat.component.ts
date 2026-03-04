@@ -74,11 +74,11 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
              </button>
           </div>
 
-          <div class="flex-1 overflow-y-auto bg-black p-4 space-y-2">
+          <div class="flex-1 overflow-y-auto bg-black p-4 space-y-2 min-h-0 overscroll-y-contain">
             
             @if(viewMode() === 'chats') {
                 <!-- Add Contact & My QR Buttons -->
-                <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="grid grid-cols-2 gap-3 mb-4 shrink-0">
                     <button (click)="showAddContact.set(true)" class="bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-center gap-2 active:bg-slate-800">
                         <app-plus-icon [size]="18" class="text-amber-400"></app-plus-icon>
                         <span class="text-xs font-bold text-white">Add ID</span>
@@ -91,20 +91,29 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
 
                 <!-- Contacts List -->
                 @for(contact of chatService.contacts(); track contact.userId) {
-                    <button (click)="openChat(contact)" class="w-full bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 active:scale-[0.98] transition-transform">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-black text-sm uppercase shrink-0">
-                            {{ contact.name.substring(0,2) }}
+                    <div class="w-full bg-rose-600 rounded-2xl overflow-hidden border border-slate-800 relative">
+                        <div class="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide flex items-stretch">
+                            <!-- Main Chat Button -->
+                            <button (click)="openChat(contact)" class="w-full shrink-0 snap-start bg-slate-900 p-3 flex items-center gap-3 active:bg-slate-800 transition-colors text-left">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-black text-sm uppercase shrink-0" [class]="getAvatarColor(contact.name)">
+                                    {{ contact.name.substring(0,2) }}
+                                </div>
+                                <div class="flex-1 overflow-hidden">
+                                    <div class="flex justify-between items-center mb-0.5">
+                                        <span class="font-bold text-slate-200 text-sm truncate">{{ contact.name }}</span>
+                                        @if(contact.lastTimestamp) {
+                                            <span class="text-[9px] text-slate-500">{{ contact.lastTimestamp | date:'shortTime' }}</span>
+                                        }
+                                    </div>
+                                    <p class="text-xs text-slate-500 truncate" [class.font-bold]="true" [class.text-white]="true">{{ contact.lastMessage || 'Start chatting...' }}</p>
+                                </div>
+                            </button>
+                            <!-- Delete Button -->
+                            <button (click)="confirmRemoveContact(contact, $event)" class="w-20 shrink-0 snap-end flex items-center justify-center text-white bg-rose-600 active:bg-rose-700 transition-colors">
+                                <app-trash2-icon [size]="20"></app-trash2-icon>
+                            </button>
                         </div>
-                        <div class="flex-1 text-left overflow-hidden">
-                            <div class="flex justify-between items-center mb-0.5">
-                                <span class="font-bold text-slate-200 text-sm truncate">{{ contact.name }}</span>
-                                @if(contact.lastTimestamp) {
-                                    <span class="text-[9px] text-slate-500">{{ contact.lastTimestamp | date:'shortTime' }}</span>
-                                }
-                            </div>
-                            <p class="text-xs text-slate-500 truncate" [class.font-bold]="true" [class.text-white]="true">{{ contact.lastMessage || 'Start chatting...' }}</p>
-                        </div>
-                    </button>
+                    </div>
                 } @empty {
                     <div class="flex flex-col items-center justify-center h-48 opacity-50">
                         <app-message-circle-icon [size]="40" class="text-slate-600 mb-2"></app-message-circle-icon>
@@ -144,7 +153,7 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
       
       <!-- VIEW: Active Chat Room -->
       @else {
-          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 scrollbar-hide" #scrollContainer>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 scrollbar-hide min-h-0 overscroll-y-contain" #scrollContainer>
             @for (msg of messages(); track msg.id) {
                 <div class="flex flex-col group" [class.items-end]="msg.senderId === user().id" [class.items-start]="msg.senderId !== user().id">
                     
@@ -277,6 +286,21 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
         </div>
       }
 
+      <!-- MODAL: Confirm Delete -->
+      @if (contactToDelete()) {
+        <div class="absolute inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+             <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+                <h3 class="text-white font-black text-lg mb-2">Remove Contact?</h3>
+                <p class="text-slate-400 text-sm mb-6">Are you sure you want to remove <strong class="text-white">{{ contactToDelete()?.name }}</strong> from your contacts?</p>
+                
+                <div class="flex gap-3">
+                    <button (click)="contactToDelete.set(null)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold border border-slate-700 active:bg-slate-700 transition-colors">Cancel</button>
+                    <button (click)="executeRemoveContact()" class="flex-1 bg-rose-600 text-white py-3 rounded-xl font-bold active:bg-rose-700 transition-colors">Remove</button>
+                </div>
+             </div>
+        </div>
+      }
+
       <!-- MODAL: Calling UI -->
       @if (activeCall()) {
         <div class="absolute inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
@@ -324,6 +348,7 @@ export class ChatComponent implements AfterViewChecked {
   showAddContact = signal(false);
   newContactId = signal('');
   viewImage = signal<string | null>(null);
+  contactToDelete = signal<ChatContact | null>(null);
   
   // Calling
   activeCall = signal<any | null>(null);
@@ -378,6 +403,44 @@ export class ChatComponent implements AfterViewChecked {
 
   openChat(contact: ChatContact) {
       this.activeChat.set(contact);
+  }
+
+  confirmRemoveContact(contact: ChatContact, event: Event) {
+    event.stopPropagation();
+    event.preventDefault();
+    this.contactToDelete.set(contact);
+  }
+
+  async executeRemoveContact() {
+    const contact = this.contactToDelete();
+    if (!contact) return;
+    
+    this.contactToDelete.set(null);
+    
+    // Optimistically remove from UI immediately
+    this.chatService.contacts.update(list => list.filter(c => c.userId !== contact.userId));
+    
+    try {
+      await this.chatService.removeContact(this.user().id, contact.userId);
+    } catch (err) {
+      console.error('Failed to remove contact', err);
+    }
+  }
+
+  getAvatarColor(name: string): string {
+    const colors = [
+      'from-amber-500 to-amber-700',
+      'from-emerald-500 to-emerald-700',
+      'from-blue-500 to-blue-700',
+      'from-rose-500 to-rose-700',
+      'from-violet-500 to-violet-700',
+      'from-cyan-500 to-cyan-700'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
   }
 
   sendMessage(event?: Event) {

@@ -72,13 +72,23 @@ export class ChatService {
 
   // --- 1. Listeners ---
 
+  private contactsListener: any = null;
+  private requestsListener: any = null;
+
   listenToUserData(myUserId: string) {
     if (!this.db || !myUserId) return;
 
+    const contactsPath = `users/${myUserId}/contacts`;
+    const requestsPath = `requests/${myUserId}`;
+
+    // Clean up existing listeners
+    off(ref(this.db, contactsPath));
+    off(ref(this.db, requestsPath));
+
     // Listen to Contacts
-    const contactsRef = ref(this.db, `users/${myUserId}/contacts`);
-    onValue(contactsRef, (snapshot) => {
+    onValue(ref(this.db, contactsPath), (snapshot) => {
       const data = snapshot.val();
+      console.log('Contacts updated from Firebase:', data);
       if (data) {
         const list: ChatContact[] = Object.values(data);
         list.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
@@ -89,12 +99,10 @@ export class ChatService {
     });
 
     // Listen to Incoming Requests
-    const requestsRef = ref(this.db, `requests/${myUserId}`);
-    onValue(requestsRef, (snapshot) => {
+    onValue(ref(this.db, requestsPath), (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const list: FriendRequest[] = Object.values(data);
-        // Sort by newest
         list.sort((a, b) => b.timestamp - a.timestamp);
         this.incomingRequests.set(list);
       } else {
@@ -155,6 +163,25 @@ export class ChatService {
   async rejectFriendRequest(myId: string, senderId: string) {
     if (!this.db) return;
     await remove(ref(this.db, `requests/${myId}/${senderId}`));
+  }
+
+  async removeContact(myId: string, otherId: string) {
+    if (!this.db) return;
+    
+    // 1. Remove from local side first (most important)
+    try {
+      await set(ref(this.db, `users/${myId}/contacts/${otherId}`), null);
+    } catch (error) {
+      console.error('Failed to remove local contact:', error);
+      throw error; // Rethrow so UI can show error
+    }
+    
+    // 2. Try to remove from other side (best effort, might fail due to permissions)
+    try {
+      await set(ref(this.db, `users/${otherId}/contacts/${myId}`), null);
+    } catch (e) {
+      console.warn('Could not remove remote contact (ignored):', e);
+    }
   }
 
   // --- 3. Messaging ---
