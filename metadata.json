@@ -2,6 +2,7 @@
   "name": "Future World Agent Book",
   "description": "A specialized calculator tool with user management for shops, built with a dark, modern UI. Features role-based access for admins and users, and tools for quick number generation and calculation, running fully on the client-side.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "microphone"
   ]
 }

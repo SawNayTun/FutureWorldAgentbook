@@ -7,13 +7,35 @@
         <app-edit3-icon [size]="10" class="text-slate-600"></app-edit3-icon>
       </button>
 
-      <button (click)="toggleMode()" class="px-3 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-black text-amber-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm">
-        {{ mode() }}
-      </button>
-
-      <button (click)="toggleCurrency()" class="px-3 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-black text-emerald-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm">
-        {{ currency() }}
-      </button>
+      <div class="flex gap-2">
+        <div class="flex bg-slate-800 rounded-md border border-slate-700 p-0.5">
+          @for (c of ['K', '฿', '¥']; track c) {
+            <button 
+              (click)="currency.set($any(c))"
+              class="px-2 py-0.5 rounded text-[9px] font-black transition-all"
+              [class.bg-amber-600]="currency() === c"
+              [class.text-white]="currency() === c"
+              [class.text-slate-500]="currency() !== c"
+            >{{ c }}</button>
+          }
+        </div>
+        <button (click)="toggleGrid()" class="px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-400 hover:text-amber-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm" [class.text-amber-500]="showGrid()" [class.border-amber-500]="showGrid()">
+          <app-grid-icon [size]="14"></app-grid-icon>
+        </button>
+        <button (click)="toggleMode()" class="px-3 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-black text-amber-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm">
+          {{ mode() }}
+        </button>
+        <button 
+          (click)="showHistory.set(!showHistory())" 
+          class="px-2 py-0.5 rounded-md bg-slate-800 border text-slate-400 hover:text-amber-500 hover:bg-slate-700 active:scale-95 transition-all shadow-sm flex items-center gap-1" 
+          [class.text-amber-500]="showHistory()" 
+          [class.border-amber-500]="showHistory()"
+          [class.border-slate-700]="!showHistory()"
+        >
+          <app-history-icon [size]="12"></app-history-icon>
+          <span class="text-[9px] font-black uppercase">မှတ်တမ်း</span>
+        </button>
+      </div>
 
       @if (isEditingName()) {
         <input 
@@ -52,7 +74,7 @@
       </button>
     </div>
     
-    <div class="grid grid-cols-5 gap-1">
+    <div class="grid grid-cols-4 gap-1">
       @for (k of modButtons(); track k) {
         @let isActive = activeModButton() === k;
         <button 
@@ -96,6 +118,124 @@
   </div>
 
   <div class="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 bg-black pb-40">
+    <!-- History Section -->
+    @if (showHistory()) {
+      <div class="mb-4 bg-slate-900 border border-slate-700 rounded-2xl p-4 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-sm font-black text-amber-500 flex items-center gap-2 uppercase tracking-widest">
+            <app-history-icon [size]="16"></app-history-icon>
+            မှတ်တမ်း (History)
+          </h3>
+          <button (click)="clearHistory()" class="text-[10px] font-black text-rose-500 hover:text-rose-400 uppercase tracking-tighter">
+            အားလုံးဖျက်မည်
+          </button>
+        </div>
+
+        <div class="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+          @for (h of history(); track h.id) {
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-3 hover:border-amber-500/50 transition-all group">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <p class="text-[10px] text-slate-500 font-mono">{{ h.timestamp | date:'dd/MM/yyyy h:mm a' }}</p>
+                  <p class="text-xs font-black text-white mt-0.5">{{ h.mode }} - {{ h.totalCount }} ကွက်</p>
+                </div>
+                <div class="flex gap-2">
+                  <button (click)="loadHistoryItem(h)" class="px-2 py-1 rounded bg-amber-600 text-white text-[10px] font-black hover:bg-amber-700 transition-all">
+                    ပြန်ယူမည်
+                  </button>
+                  <button (click)="deleteHistoryItem(h.id)" class="p-1 text-slate-500 hover:text-rose-500 transition-all">
+                    <app-trash2-icon [size]="14"></app-trash2-icon>
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                @for (item of h.items.slice(0, 10); track $index) {
+                  <span class="text-[9px] font-mono text-slate-400 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">{{ item.n }}</span>
+                }
+                @if (h.items.length > 10) {
+                  <span class="text-[9px] font-mono text-slate-500">...</span>
+                }
+              </div>
+              <div class="mt-2 text-right">
+                <span class="text-xs font-black text-amber-500">{{ h.totalAmount.toLocaleString() }} {{ h.currency }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div class="text-center py-8">
+              <p class="text-xs text-slate-600 font-black uppercase tracking-widest">မှတ်တမ်းမရှိသေးပါ</p>
+              <p class="text-[9px] text-slate-700 mt-1">စာရင်းတင်ပြီးတိုင်း ဤနေရာတွင် သိမ်းဆည်းပေးပါမည်</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Number Grid -->
+    @if (showGrid()) {
+      <div class="mb-4 bg-slate-900 p-2 rounded-xl border border-slate-800 animate-in fade-in slide-in-from-top-2 duration-200">
+        <!-- Digits Row -->
+        <div class="grid grid-cols-10 gap-1 mb-2 pb-2 border-b border-slate-800">
+          @for (d of digits; track d) {
+            <button 
+              (click)="toggleChip(d)"
+              class="aspect-square flex items-center justify-center text-[10px] font-black rounded border transition-colors bg-slate-950 border-slate-800 text-slate-300 hover:bg-slate-800 active:scale-95"
+              [class.bg-amber-600]="chips().includes(d)"
+              [class.text-white]="chips().includes(d)"
+              [class.border-amber-500]="chips().includes(d)"
+            >{{ d }}</button>
+          }
+        </div>
+
+        @if (mode() === '2D') {
+          <div class="grid grid-cols-10 gap-1">
+            @for (n of numbers2D; track n) {
+              <button 
+                (click)="toggleChip(n)"
+                class="aspect-square flex items-center justify-center text-[10px] font-black rounded border transition-colors"
+                [class.bg-amber-600]="chips().includes(n)"
+                [class.text-white]="chips().includes(n)"
+                [class.border-amber-500]="chips().includes(n)"
+                [class.bg-slate-800]="!chips().includes(n)"
+                [class.text-slate-400]="!chips().includes(n)"
+                [class.border-slate-700]="!chips().includes(n)"
+              >{{ n }}</button>
+            }
+          </div>
+        } @else {
+          <!-- 3D Tabs -->
+          <div class="flex mb-2 gap-1 overflow-x-auto pb-1 no-scrollbar">
+            @for (h of numbers3DTabs; track h) {
+              <button 
+                (click)="active3DTab.set(h)"
+                class="px-3 py-1.5 rounded-lg text-[10px] font-black border transition-colors shrink-0"
+                [class.bg-amber-600]="active3DTab() === h"
+                [class.text-white]="active3DTab() === h"
+                [class.border-amber-500]="active3DTab() === h"
+                [class.bg-slate-800]="active3DTab() !== h"
+                [class.text-slate-400]="active3DTab() !== h"
+                [class.border-slate-700]="active3DTab() !== h"
+              >{{ h }}xx</button>
+            }
+          </div>
+          <!-- 3D Grid -->
+          <div class="grid grid-cols-10 gap-1">
+            @for (n of current3DGrid(); track n) {
+              <button 
+                (click)="toggleChip(n)"
+                class="aspect-square flex items-center justify-center text-[8px] font-black rounded border transition-colors"
+                [class.bg-amber-600]="chips().includes(n)"
+                [class.text-white]="chips().includes(n)"
+                [class.border-amber-500]="chips().includes(n)"
+                [class.bg-slate-800]="!chips().includes(n)"
+                [class.text-slate-400]="!chips().includes(n)"
+                [class.border-slate-700]="!chips().includes(n)"
+              >{{ n }}</button>
+            }
+          </div>
+        }
+      </div>
+    }
+
     <!-- Quick Sets -->
     <div class="mb-4">
         <h3 class="text-slate-500 font-black text-[10px] uppercase tracking-wider px-1 mb-1">Quick Sets (အမြန်သုံး)</h3>
@@ -133,7 +273,7 @@
     }
   </div>
 
-  @if (dataList().length > 0) {
+  @if (dataList().length > 0 && chips().length === 0) {
     <div class="fixed bottom-0 left-0 right-0 bg-slate-900/80 backdrop-blur-md p-3 flex items-center gap-2 border-t border-slate-800 shadow-2xl z-40" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
       <button (click)="clearAllEntries()" class="w-10 bg-rose-500/10 text-rose-400 rounded-xl border border-rose-500/20 h-10 flex items-center justify-center active:bg-rose-500/20 transition-colors">
         <app-trash2-icon [size]="18"></app-trash2-icon>
@@ -144,7 +284,12 @@
       
       <!-- Share Image Button -->
       <button (click)="shareAsImage()" class="flex-1 bg-emerald-600/10 border border-emerald-600/30 text-emerald-500 h-10 rounded-xl font-black text-[10px] flex items-center justify-center gap-1 active:bg-emerald-600/20 uppercase transition-colors">
-        <app-share-icon [size]="14"></app-share-icon> Share Image
+        <app-share-icon [size]="14"></app-share-icon> Share
+      </button>
+
+      <!-- Send to Chat Button -->
+      <button (click)="openSendToChat()" class="flex-1 bg-amber-600/10 border border-amber-600/30 text-amber-500 h-10 rounded-xl font-black text-[10px] flex items-center justify-center gap-1 active:bg-amber-600/20 uppercase transition-colors">
+        <app-message-circle-icon [size]="14"></app-message-circle-icon> Send Chat
       </button>
 
       <div class="px-2 min-w-[70px] border-l border-slate-800 text-right">
@@ -157,6 +302,64 @@
       </button>
     </div>
   }
+
+  @if (chips().length > 0) {
+    <div class="fixed bottom-0 left-0 right-0 bg-slate-900 px-2 py-3 border-t border-slate-800 shadow-2xl z-50 animate-in slide-in-from-bottom-5 duration-200" style="padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));">
+        <div class="flex items-center gap-2 w-full">
+            <div class="bg-slate-800 text-amber-500 px-2 py-2 rounded-lg font-black text-xs border border-slate-700 min-w-[36px] text-center shrink-0">
+                {{ chips().length }}
+            </div>
+            <input 
+                #quickAmtRef
+                type="text" 
+                inputMode="decimal" 
+                placeholder="Amount" 
+                class="flex-1 min-w-0 bg-slate-950 border border-amber-500/50 text-white font-black text-lg py-2 px-2 rounded-xl outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition-all placeholder:text-slate-700 text-center"
+                [value]="quickAmount()"
+                (input)="quickAmount.set($any($event.target).value)"
+                (keydown.enter)="addQuickEntry()"
+            />
+            <button (click)="addQuickEntry()" class="bg-amber-600 text-white px-4 py-2 rounded-xl font-black active:scale-95 shadow-lg shadow-amber-600/20 transition-transform shrink-0">
+                ADD
+            </button>
+        </div>
+    </div>
+  }
+
+  @if (showContactPicker()) {
+    <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+      <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm flex flex-col shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-white font-black text-lg">Send to Chat</h3>
+          <button (click)="showContactPicker.set(false)" class="text-slate-500">
+            <app-x-circle-icon [size]="24"></app-x-circle-icon>
+          </button>
+        </div>
+        
+        <p class="text-slate-400 text-xs mb-4">Select a contact to send the receipt image.</p>
+        
+        <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+          @for (contact of chatService.contacts(); track contact.userId) {
+            <button 
+              (click)="sendImageToContact(contact)" 
+              class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl flex items-center gap-3 active:bg-slate-700 transition-colors"
+            >
+              <div class="w-8 h-8 rounded-full bg-amber-600 flex items-center justify-center text-white font-black text-[10px] uppercase">
+                {{ contact.name.substring(0,2) }}
+              </div>
+              <span class="text-sm font-bold text-white">{{ contact.name }}</span>
+            </button>
+          } @empty {
+            <div class="text-center py-8 opacity-50">
+              <p class="text-xs text-slate-500">No contacts found.</p>
+            </div>
+          }
+        </div>
+        
+        <button (click)="showContactPicker.set(false)" class="mt-4 w-full text-slate-500 py-2 text-xs">Cancel</button>
+      </div>
+    </div>
+  }
 </div>
 
 @if(isPrinting()) {
@@ -165,6 +368,6 @@
     [dataList]="dataList()"
     [totalAmount]="totalAmount()"
     [totalCount]="totalCount()"
-    [currency]="currency()">
+    [currencySymbol]="currency()">
   </app-receipt>
 }

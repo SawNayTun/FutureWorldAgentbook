@@ -21,10 +21,22 @@ export interface QuickSet {
   numbers: string[];
 }
 
+export interface HistoryItem {
+  id: string;
+  timestamp: string;
+  shopName: string;
+  mode: '2D' | '3D';
+  currency: string;
+  items: { n: string; a: number }[];
+  totalAmount: number;
+  totalCount: number;
+}
+
 interface Database {
   settings: AdminSettings;
   users: UserData[];
   quickSets: QuickSet[];
+  history: HistoryItem[];
 }
 
 const DB_KEY = 'fw_database';
@@ -34,10 +46,12 @@ const DB_KEY = 'fw_database';
 })
 export class DataService {
   private database = signal<Database | null>(null);
+  public currentUser = signal<UserData | null>(null);
 
   adminSettings = computed(() => this.database()?.settings ?? null);
   allUsers = computed(() => this.database()?.users ?? []);
   quickSets = computed(() => this.database()?.quickSets ?? []);
+  history = computed(() => this.database()?.history ?? []);
 
   async initialize(): Promise<'login' | 'error'> {
     try {
@@ -51,6 +65,9 @@ export class DataService {
         if (!db.quickSets) {
           db.quickSets = [];
         }
+        if (!db.history) {
+          db.history = [];
+        }
         this.database.set(db);
       } else {
         // Create default initial state
@@ -60,7 +77,8 @@ export class DataService {
                 masterPass: 'MasterSaiYan'
             },
             users: [],
-            quickSets: []
+            quickSets: [],
+            history: []
         };
         this.database.set(defaultDb);
         this._saveDatabase();
@@ -201,6 +219,32 @@ export class DataService {
     this.database.update(db => {
       if (!db) return null;
       return { ...db, quickSets: db.quickSets.filter(qs => qs.name !== setName) };
+    });
+    this._saveDatabase();
+  }
+
+  addToHistory(item: HistoryItem): void {
+    this.database.update(db => {
+      if (!db) return null;
+      // Keep only last 50 items to avoid localStorage bloat
+      const newHistory = [item, ...db.history].slice(0, 50);
+      return { ...db, history: newHistory };
+    });
+    this._saveDatabase();
+  }
+
+  deleteHistoryItem(id: string): void {
+    this.database.update(db => {
+      if (!db) return null;
+      return { ...db, history: db.history.filter(h => h.id !== id) };
+    });
+    this._saveDatabase();
+  }
+
+  clearHistory(): void {
+    this.database.update(db => {
+      if (!db) return null;
+      return { ...db, history: [] };
     });
     this._saveDatabase();
   }

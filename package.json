@@ -6,21 +6,23 @@
   "scripts": {
     "dev": "ng serve",
     "build": "ng build",
+    "lint": "ng lint",
     "preview": "ng serve --configuration=production"
   },
   "dependencies": {
-    "rxjs": "^7.8.2",
-    "@angular/common": "^21.1.0",
-    "@angular/platform-browser": "^21.1.0",
-    "@angular/core": "^21.1.0",
-    "@angular/compiler": "^21.1.0",
-    "@angular/forms": "^21.1.2",
-    "@google/genai": "^1.39.0",
-    "@capacitor/cli": "^8.0.2",
-    "firebase": "^12.10.0",
     "@angular/build": "^21.1.0",
     "@angular/cli": "^21.1.0",
+    "@angular/common": "^21.1.0",
+    "@angular/compiler": "^21.1.0",
     "@angular/compiler-cli": "^21.1.0",
+    "@angular/core": "^21.1.0",
+    "@angular/forms": "^21.1.2",
+    "@angular/platform-browser": "^21.1.0",
+    "@capacitor/cli": "^8.0.2",
+    "@google/genai": "^1.39.0",
+    "firebase": "^12.10.0",
+    "html2canvas": "^1.4.1",
+    "rxjs": "^7.8.2",
     "tailwindcss": "latest"
   },
   "devDependencies": {

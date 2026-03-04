@@ -215,4 +215,50 @@ export class ChatService {
     
     await update(ref(db), updates);
   }
+
+  async deleteMessage(chatId: string, messageId: string) {
+    if (!this.db || !chatId || !messageId) return;
+    await remove(ref(this.db, `messages/${chatId}/${messageId}`));
+  }
+
+  // --- 4. Calling Signaling ---
+
+  async sendCallSignal(targetId: string, callerId: string, callerName: string, type: 'audio' | 'video') {
+    if (!this.db) return;
+    const callRef = ref(this.db, `calls/${targetId}/${callerId}`);
+    await set(callRef, {
+      callerId,
+      callerName,
+      type,
+      status: 'ringing',
+      timestamp: serverTimestamp()
+    });
+  }
+
+  async updateCallStatus(targetId: string, callerId: string, status: 'accepted' | 'rejected' | 'ended') {
+    if (!this.db) return;
+    const callRef = ref(this.db, `calls/${targetId}/${callerId}`);
+    if (status === 'ended' || status === 'rejected') {
+      await remove(callRef);
+    } else {
+      await update(callRef, { status });
+    }
+  }
+
+  listenToCalls(myId: string, callback: (call: any) => void) {
+    if (!this.db || !myId) return;
+    const callsRef = ref(this.db, `calls/${myId}`);
+    onValue(callsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Get the most recent call
+        const calls = Object.values(data);
+        if (calls.length > 0) {
+          callback(calls[0]);
+        }
+      } else {
+        callback(null);
+      }
+    });
+  }
 }

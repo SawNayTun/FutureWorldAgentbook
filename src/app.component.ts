@@ -115,6 +115,7 @@ export class AppComponent implements OnInit {
         }
         
         this.currentUser.set(user);
+        this.dataService.currentUser.set(user);
         this.isAdmin.set(false);
 
         if (user.pin) {
@@ -166,6 +167,7 @@ export class AppComponent implements OnInit {
           expiresAt: null
       };
       this.currentUser.set(adminUser);
+      this.dataService.currentUser.set(adminUser);
 
       this.appState.set('app');
       this.activeTab.set('calc');
@@ -191,6 +193,7 @@ export class AppComponent implements OnInit {
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
 
       this.currentUser.set(sessionUser);
+      this.dataService.currentUser.set(sessionUser);
       this.isAdmin.set(false);
       this.appState.set('set-pin');
       this.isLoggingIn.set(false);
@@ -208,6 +211,7 @@ export class AppComponent implements OnInit {
 
     if (user && user.pin === pin) {
       this.appState.set('app');
+      this.dataService.currentUser.set(user);
     } else {
       this.loginError.set('PIN မမှန်ပါ။');
     }
@@ -221,6 +225,7 @@ export class AppComponent implements OnInit {
     const updatedUser = { ...user, pin };
     localStorage.setItem(SESSION_KEY, JSON.stringify(updatedUser));
     this.currentUser.set(updatedUser);
+    this.dataService.currentUser.set(updatedUser);
     this.appState.set('app');
   }
   
@@ -231,6 +236,7 @@ export class AppComponent implements OnInit {
   handleLogout(error: string | null = null) {
     localStorage.removeItem(SESSION_KEY);
     this.currentUser.set(null);
+    this.dataService.currentUser.set(null);
     this.appState.set('login');
     this.isAdmin.set(false);
     this.loginError.set(error);

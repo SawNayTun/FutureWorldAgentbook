@@ -1,11 +1,11 @@
 @switch (appState()) {
   @case ('initializing') {
-    <div class="h-screen bg-black flex items-center justify-center">
+    <div class="h-[100dvh] bg-black flex items-center justify-center">
       <p class="text-white font-black animate-pulse">Loading data...</p>
     </div>
   }
   @case ('error') {
-    <div class="h-screen bg-black flex flex-col items-center justify-center p-6 text-white">
+    <div class="h-[100dvh] bg-black flex flex-col items-center justify-center p-6 text-white">
       <div class="w-full max-w-sm bg-slate-900 border border-rose-500/30 p-8 rounded-3xl text-center">
         <h1 class="text-xl font-black mb-1 text-rose-500">Application Error</h1>
         <p class="text-xs text-slate-400">Could not load data from your browser's storage. Please try again.</p>
@@ -60,7 +60,7 @@
     }
   }
   @case ('app') {
-    <div class="h-screen bg-black text-white flex flex-col overflow-hidden select-none">
+    <div class="h-[100dvh] bg-black text-white flex flex-col overflow-hidden">
       <header class="px-3 pb-2 bg-slate-900 border-b border-slate-800 flex justify-between items-center shrink-0 relative" style="padding-top: calc(0.5rem + env(safe-area-inset-top));">
         <div class="flex items-center gap-2">
           <app-store-icon [size]="14" class="text-amber-400"></app-store-icon>
@@ -101,7 +101,7 @@
           </button>
         </div>
       </header>
-      <main class="flex-1 overflow-hidden">
+      <main class="flex-1 flex flex-col min-h-0 overflow-hidden">
         @if (activeTab() === 'admin' && isAdmin()) {
           <app-admin-panel></app-admin-panel>
         } @else {

@@ -9,12 +9,14 @@ import { CheckIconComponent } from '../icons/check-icon.component';
 import { DownloadIconComponent } from '../icons/download-icon.component';
 import { UploadIconComponent } from '../icons/upload-icon.component';
 import { PlusIconComponent } from '../icons/plus-icon.component';
+import { DragScrollDirective } from '../../directives/drag-scroll.directive';
 
 @Component({
   selector: 'app-admin-panel',
   templateUrl: './admin-panel.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, Trash2IconComponent, SettingsIconComponent, UsersIconComponent, ShareIconComponent, CheckIconComponent, DownloadIconComponent, UploadIconComponent, PlusIconComponent]
+  imports: [CommonModule, Trash2IconComponent, SettingsIconComponent, UsersIconComponent, ShareIconComponent, CheckIconComponent, DownloadIconComponent, UploadIconComponent, PlusIconComponent, DragScrollDirective],
+  host: { class: 'flex-1 flex flex-col min-h-0' }
 })
 export class AdminPanelComponent implements OnInit {
   private dataService = inject(DataService);

@@ -9,6 +9,9 @@ import { BellIconComponent } from '../icons/bell-icon.component';
 import { CheckIconComponent } from '../icons/check-icon.component';
 import { MessageCircleIconComponent } from '../icons/message-circle-icon.component';
 import { ImageIconComponent } from '../icons/image-icon.component';
+import { PhoneIconComponent } from '../icons/phone-icon.component';
+import { VideoIconComponent } from '../icons/video-icon.component';
+import { Trash2IconComponent } from '../icons/trash2-icon.component';
 
 @Component({
   selector: 'app-chat',
@@ -32,9 +35,20 @@ import { ImageIconComponent } from '../icons/image-icon.component';
                 <div class="w-2 h-2 rounded-full" [class.bg-emerald-500]="chatService.isConnected()" [class.bg-rose-500]="!chatService.isConnected()"></div>
             }
         </div>
-        <button (click)="close.emit()" class="text-slate-400 hover:text-white">
-          <app-x-circle-icon [size]="24"></app-x-circle-icon>
-        </button>
+        
+        <div class="flex items-center gap-3">
+          @if (activeChat()) {
+            <button (click)="startCall('audio')" class="text-slate-400 hover:text-amber-400 p-1">
+              <app-phone-icon [size]="18"></app-phone-icon>
+            </button>
+            <button (click)="startCall('video')" class="text-slate-400 hover:text-amber-400 p-1">
+              <app-video-icon [size]="18"></app-video-icon>
+            </button>
+          }
+          <button (click)="close.emit()" class="text-slate-400 hover:text-white">
+            <app-x-circle-icon [size]="24"></app-x-circle-icon>
+          </button>
+        </div>
       </div>
 
       <!-- MAIN CONTENT -->
@@ -132,7 +146,7 @@ import { ImageIconComponent } from '../icons/image-icon.component';
       @else {
           <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950 scrollbar-hide" #scrollContainer>
             @for (msg of messages(); track msg.id) {
-                <div class="flex flex-col" [class.items-end]="msg.senderId === user().id" [class.items-start]="msg.senderId !== user().id">
+                <div class="flex flex-col group" [class.items-end]="msg.senderId === user().id" [class.items-start]="msg.senderId !== user().id">
                     
                     @if(msg.type === 'image' && msg.imageUrl) {
                         <div class="relative group">
@@ -143,18 +157,31 @@ import { ImageIconComponent } from '../icons/image-icon.component';
                             <span class="absolute bottom-1 right-2 text-[9px] text-white/80 bg-black/50 px-1 rounded">
                                 {{ msg.timestamp | date:'shortTime' }}
                             </span>
+                            
+                            @if(msg.senderId === user().id) {
+                              <button (click)="deleteMessage(msg.id!)" class="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
+                                <app-trash2-icon [size]="12"></app-trash2-icon>
+                              </button>
+                            }
                         </div>
                     } @else {
-                        <div 
-                            class="max-w-[80%] px-4 py-2 rounded-2xl text-sm font-medium leading-snug break-words"
-                            [class.bg-amber-600]="msg.senderId === user().id"
-                            [class.text-white]="msg.senderId === user().id"
-                            [class.rounded-tr-sm]="msg.senderId === user().id"
-                            [class.bg-slate-800]="msg.senderId !== user().id"
-                            [class.text-slate-200]="msg.senderId !== user().id"
-                            [class.rounded-tl-sm]="msg.senderId !== user().id"
-                        >
-                            {{ msg.text }}
+                        <div class="flex items-center gap-2" [class.flex-row-reverse]="msg.senderId === user().id">
+                          <div 
+                              class="max-w-[80%] px-4 py-2 rounded-2xl text-sm font-medium leading-snug break-words"
+                              [class.bg-amber-600]="msg.senderId === user().id"
+                              [class.text-white]="msg.senderId === user().id"
+                              [class.rounded-tr-sm]="msg.senderId === user().id"
+                              [class.bg-slate-800]="msg.senderId !== user().id"
+                              [class.text-slate-200]="msg.senderId !== user().id"
+                              [class.rounded-tl-sm]="msg.senderId !== user().id"
+                          >
+                              {{ msg.text }}
+                          </div>
+                          @if(msg.senderId === user().id) {
+                            <button (click)="deleteMessage(msg.id!)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <app-trash2-icon [size]="14"></app-trash2-icon>
+                            </button>
+                          }
                         </div>
                         <span class="text-[9px] text-slate-500 mt-1 px-1">
                             {{ msg.timestamp | date:'shortTime' }}
@@ -249,9 +276,34 @@ import { ImageIconComponent } from '../icons/image-icon.component';
              </div>
         </div>
       }
+
+      <!-- MODAL: Calling UI -->
+      @if (activeCall()) {
+        <div class="absolute inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
+          <div class="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-black text-4xl uppercase mb-8 shadow-2xl animate-pulse">
+            {{ activeCall()?.callerName?.substring(0,2) }}
+          </div>
+          
+          <h2 class="text-2xl font-black text-white mb-2">{{ activeCall()?.callerName }}</h2>
+          <p class="text-amber-500 font-bold uppercase tracking-widest text-xs mb-12">
+            {{ activeCall()?.status === 'ringing' ? (isIncoming() ? 'Incoming Call...' : 'Calling...') : 'Connected' }}
+          </p>
+
+          <div class="flex gap-8">
+            @if (isIncoming() && activeCall()?.status === 'ringing') {
+              <button (click)="answerCall()" class="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
+                <app-phone-icon [size]="28"></app-phone-icon>
+              </button>
+            }
+            <button (click)="endCall()" class="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
+              <app-phone-icon [size]="28" class="rotate-[135deg]"></app-phone-icon>
+            </button>
+          </div>
+        </div>
+      }
     </div>
   `,
-  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent],
+  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent, PhoneIconComponent, VideoIconComponent, Trash2IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatComponent implements AfterViewChecked {
@@ -273,6 +325,10 @@ export class ChatComponent implements AfterViewChecked {
   newContactId = signal('');
   viewImage = signal<string | null>(null);
   
+  // Calling
+  activeCall = signal<any | null>(null);
+  isIncoming = signal(false);
+  
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
 
@@ -282,6 +338,15 @@ export class ChatComponent implements AfterViewChecked {
         const u = this.user();
         if (u) {
             this.chatService.listenToUserData(u.id);
+            this.chatService.listenToCalls(u.id, (call) => {
+              if (call) {
+                this.activeCall.set(call);
+                this.isIncoming.set(true);
+              } else if (this.isIncoming()) {
+                this.activeCall.set(null);
+                this.isIncoming.set(false);
+              }
+            });
         }
     });
 
@@ -374,6 +439,54 @@ export class ChatComponent implements AfterViewChecked {
           img.src = e.target?.result as string;
       };
       reader.readAsDataURL(file);
+  }
+
+  async deleteMessage(msgId: string) {
+    const chat = this.activeChat();
+    if (!chat || !confirm('Delete this message for everyone?')) return;
+    await this.chatService.deleteMessage(chat.chatId, msgId);
+  }
+
+  // --- Calling ---
+
+  async startCall(type: 'audio' | 'video') {
+    const chat = this.activeChat();
+    const me = this.user();
+    if (!chat || !me) return;
+
+    this.isIncoming.set(false);
+    this.activeCall.set({
+      callerId: me.id,
+      callerName: chat.name,
+      type,
+      status: 'ringing'
+    });
+
+    await this.chatService.sendCallSignal(chat.userId, me.id, me.name, type);
+  }
+
+  async answerCall() {
+    const call = this.activeCall();
+    const me = this.user();
+    if (!call || !me) return;
+
+    await this.chatService.updateCallStatus(me.id, call.callerId, 'accepted');
+    // In a real app, we'd start WebRTC here. For now, we just show "Connected"
+  }
+
+  async endCall() {
+    const call = this.activeCall();
+    const me = this.user();
+    const chat = this.activeChat();
+    if (!call || !me) return;
+
+    if (this.isIncoming()) {
+      await this.chatService.updateCallStatus(me.id, call.callerId, 'ended');
+    } else if (chat) {
+      await this.chatService.updateCallStatus(chat.userId, me.id, 'ended');
+    }
+    
+    this.activeCall.set(null);
   }
 
   // --- Utility ---
