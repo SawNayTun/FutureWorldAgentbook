@@ -494,8 +494,9 @@ export class CalculatorComponent implements AfterViewInit {
         const blob = await (await fetch(base64)).blob();
         const file = new File([blob], 'receipt.png', { type: 'image/png' });
         
-        // Try Web Share API first (Best for mobile gallery saving)
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // 1. Try Web Share API (Best for mobile)
+        // We skip navigator.canShare check as it's sometimes unreliable on Android Chrome
+        if (navigator.share) {
             try {
                 await navigator.share({
                     files: [file],
@@ -505,39 +506,42 @@ export class CalculatorComponent implements AfterViewInit {
                 this.saveToHistoryAndClear();
                 return;
             } catch (shareErr) {
-                console.warn('Share failed or cancelled, falling back to clipboard/download', shareErr);
+                console.warn('Share failed or cancelled, falling back to download', shareErr);
             }
         }
 
-        // Fallback to Clipboard
-        try {
-            if (typeof ClipboardItem !== 'undefined') {
-                const item = new ClipboardItem({ [blob.type]: blob });
-                await navigator.clipboard.write([item]);
-                alert('Image copied to clipboard! You can paste it now.');
-                this.saveToHistoryAndClear();
-                return;
-            }
-        } catch (clipboardErr) {
-            console.warn('Clipboard write failed', clipboardErr);
-        }
-
-        // Final Fallback: Download
-        console.log('Falling back to download');
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `receipt-${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        this.saveToHistoryAndClear();
-        alert('Image downloaded to your device.');
+        // 2. Fallback to Download (Most reliable if share fails)
+        // We skip clipboard for images as it's flaky on mobile (user reported paste issues)
+        this.downloadImage(blob);
 
     } catch (err) {
         console.error('Image generation failed', err);
         alert('Could not generate image.');
+    }
+  }
+
+  private downloadImage(blob: Blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `receipt-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.saveToHistoryAndClear();
+      alert('Image downloaded. You can find it in your gallery.');
+  }
+
+  async downloadReceipt() {
+    const base64 = await this.generateReceiptImage();
+    if (!base64) return;
+    try {
+        const blob = await (await fetch(base64)).blob();
+        this.downloadImage(blob);
+    } catch (err) {
+        console.error('Download failed', err);
+        alert('Could not download image.');
     }
   }
 
