@@ -471,6 +471,26 @@ import { ShareIconComponent } from '../icons/share-icon.component';
           </div>
         </div>
       }
+      <!-- Permission Error Modal -->
+      @if (permissionError()) {
+        <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm flex flex-col shadow-2xl text-center">
+            <div class="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.69 14 12 2 4.31 14M12 18h.01M12 16v-4"/></svg>
+            </div>
+            <h3 class="text-white font-black text-lg mb-2">Permission Required</h3>
+            <p class="text-slate-400 text-sm mb-6 whitespace-pre-line">{{ permissionError() }}</p>
+            <div class="flex gap-3">
+                <button (click)="permissionError.set(null)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors">
+                  Dismiss
+                </button>
+                <button (click)="retryCall()" class="flex-1 bg-amber-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-amber-700 transition-colors">
+                  Retry
+                </button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent, PhoneIconComponent, VideoIconComponent, Trash2IconComponent, DownloadIconComponent, ShareIconComponent],
@@ -496,10 +516,12 @@ export class ChatComponent implements AfterViewChecked {
   viewImage = signal<string | null>(null);
   contactToDelete = signal<ChatContact | null>(null);
   messageToDelete = signal<string | null>(null);
+  permissionError = signal<string | null>(null);
   
   // Calling
   activeCall = signal<any | null>(null);
   isIncoming = signal(false);
+  lastCallType: 'audio' | 'video' | null = null;
   
   // WebRTC
   localStream: MediaStream | null = null;
@@ -920,15 +942,24 @@ export class ChatComponent implements AfterViewChecked {
   }
 
   async initWebRTC(video: boolean) {
+      this.lastCallType = video ? 'video' : 'audio';
       try {
+          this.permissionError.set(null); // Clear previous errors
+
           // Try to get media with preferred constraints
           try {
             this.localStream = await navigator.mediaDevices.getUserMedia({ 
                 video: video ? { facingMode: 'user' } : false, 
                 audio: true 
             });
-          } catch (err) {
+          } catch (err: any) {
             console.warn('Preferred media constraints failed, trying fallback...');
+            
+            // Handle specific permission errors immediately
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                throw err;
+            }
+
             // Fallback: try without specific facingMode or just audio if video fails
             if (video) {
                  try {
@@ -936,7 +967,10 @@ export class ChatComponent implements AfterViewChecked {
                         video: true, 
                         audio: true 
                     });
-                 } catch (e) {
+                 } catch (e: any) {
+                     if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+                         throw e;
+                     }
                      console.warn('Video failed, falling back to audio only', e);
                      this.localStream = await navigator.mediaDevices.getUserMedia({ 
                         video: false, 
@@ -967,7 +1001,7 @@ export class ChatComponent implements AfterViewChecked {
           });
           
           // Handle Remote Stream
-          this.peerConnection.ontrack = (event) => {
+          this.peerConnection!.ontrack = (event) => {
               this.remoteStream = event.streams[0];
               if (this.remoteVideo && this.remoteVideo.nativeElement) {
                   this.remoteVideo.nativeElement.srcObject = this.remoteStream;
@@ -975,7 +1009,7 @@ export class ChatComponent implements AfterViewChecked {
           };
           
           // Handle ICE Candidates
-          this.peerConnection.onicecandidate = (event) => {
+          this.peerConnection!.onicecandidate = (event) => {
               if (event.candidate) {
                   const me = this.user();
                   const call = this.activeCall();
@@ -998,13 +1032,33 @@ export class ChatComponent implements AfterViewChecked {
                   }
               }
           };
+
+      } catch (err: any) {
+          console.error('Media access error:', err);
+          let errorMessage = 'Could not access media devices.';
           
-      } catch (err) {
-          console.error('Error initializing WebRTC', err);
-          alert('Could not access camera/microphone. Please check permissions.');
-          this.endCall();
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+              errorMessage = 'Camera/Microphone access denied. Please check:\n1. Browser Site Settings (lock icon in address bar).\n2. Phone Settings > Apps > Chrome > Permissions.';
+          } else if (err.name === 'NotFoundError') {
+              errorMessage = 'No camera or microphone found on this device.';
+          } else if (err.name === 'NotReadableError') {
+              errorMessage = 'Camera or Microphone is already in use by another application.';
+          }
+          
+          this.permissionError.set(errorMessage);
+          this.cleanupCall(); // Ensure call state is reset
+          throw err;
       }
   }
+
+  retryCall() {
+      if (this.lastCallType) {
+          this.initWebRTC(this.lastCallType === 'video');
+      } else {
+          this.permissionError.set(null);
+      }
+  }
+
 
   async endCall() {
     const call = this.activeCall();
