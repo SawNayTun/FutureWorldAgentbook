@@ -215,16 +215,32 @@ export class CalculatorComponent implements AfterViewInit {
         const primaries = this.primaryChips();
         chips.forEach((n, index) => {
             const finalN = n.padStart(targetLen, '0');
-            // If split amount, check if chip is primary (direct input)
             let amt = firstAmt;
+
             if (hasSplitAmt) {
+                // Split Amount Logic (e.g. 10.5 -> 10 and 5)
+                // 3D: 123 -> 10, Permutations -> 5
+                // 2D: 12 -> 10, Reverse -> 5
                 if (primaries.length > 0) {
                     amt = primaries.includes(finalN) ? firstAmt : secondAmt;
                 } else {
-                    // Fallback if no primary info (e.g. manual selection)
+                    // Fallback for manual selection: First item gets firstAmt
                     amt = (index === 0) ? firstAmt : secondAmt;
                 }
+            } else {
+                // Single Amount Logic (e.g. 10)
+                // 2D Reverse Mode: Divide by 2 (e.g. 12 -> 5, 21 -> 5)
+                // 3D Reverse Mode: Full Amount (e.g. 123 -> 10, 132 -> 10)
+                if (is2D && this.isReverseMode()) {
+                    // If not a double (e.g. 12, 21), split the amount
+                    // If double (e.g. 11), keep full amount
+                    const isDouble = finalN.split('').every(char => char === finalN[0]);
+                    if (!isDouble) {
+                        amt = firstAmt / 2;
+                    }
+                }
             }
+            
             finalData.push({ id: Math.random(), n: finalN, a: amt });
         });
     } 
