@@ -12,6 +12,8 @@ import { ImageIconComponent } from '../icons/image-icon.component';
 import { PhoneIconComponent } from '../icons/phone-icon.component';
 import { VideoIconComponent } from '../icons/video-icon.component';
 import { Trash2IconComponent } from '../icons/trash2-icon.component';
+import { DownloadIconComponent } from '../icons/download-icon.component';
+import { ShareIconComponent } from '../icons/share-icon.component';
 
 @Component({
   selector: 'app-chat',
@@ -91,28 +93,27 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
 
                 <!-- Contacts List -->
                 @for(contact of chatService.contacts(); track contact.userId) {
-                    <div class="w-full bg-rose-600 rounded-2xl overflow-hidden border border-slate-800 relative">
-                        <div class="w-full overflow-x-auto snap-x snap-mandatory scrollbar-hide flex items-stretch">
-                            <!-- Main Chat Button -->
-                            <button (click)="openChat(contact)" class="w-full shrink-0 snap-start bg-slate-900 p-3 flex items-center gap-3 active:bg-slate-800 transition-colors text-left">
-                                <div class="w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-black text-sm uppercase shrink-0" [class]="getAvatarColor(contact.name)">
-                                    {{ contact.name.substring(0,2) }}
+                    <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center gap-3 relative group active:bg-slate-800 transition-colors">
+                        <!-- Main Chat Click Area -->
+                        <button (click)="openChat(contact)" class="flex-1 flex items-center gap-3 text-left min-w-0 outline-none">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-black text-sm uppercase shrink-0" [class]="getAvatarColor(contact.name)">
+                                {{ contact.name.substring(0,2) }}
+                            </div>
+                            <div class="flex-1 overflow-hidden">
+                                <div class="flex justify-between items-center mb-0.5">
+                                    <span class="font-bold text-slate-200 text-sm truncate">{{ contact.name }}</span>
+                                    @if(contact.lastTimestamp) {
+                                        <span class="text-[9px] text-slate-500">{{ contact.lastTimestamp | date:'shortTime' }}</span>
+                                    }
                                 </div>
-                                <div class="flex-1 overflow-hidden">
-                                    <div class="flex justify-between items-center mb-0.5">
-                                        <span class="font-bold text-slate-200 text-sm truncate">{{ contact.name }}</span>
-                                        @if(contact.lastTimestamp) {
-                                            <span class="text-[9px] text-slate-500">{{ contact.lastTimestamp | date:'shortTime' }}</span>
-                                        }
-                                    </div>
-                                    <p class="text-xs text-slate-500 truncate" [class.font-bold]="true" [class.text-white]="true">{{ contact.lastMessage || 'Start chatting...' }}</p>
-                                </div>
-                            </button>
-                            <!-- Delete Button -->
-                            <button (click)="confirmRemoveContact(contact, $event)" class="w-20 shrink-0 snap-end flex items-center justify-center text-white bg-rose-600 active:bg-rose-700 transition-colors">
-                                <app-trash2-icon [size]="20"></app-trash2-icon>
-                            </button>
-                        </div>
+                                <p class="text-xs text-slate-500 truncate" [class.font-bold]="true" [class.text-white]="true">{{ contact.lastMessage || 'Start chatting...' }}</p>
+                            </div>
+                        </button>
+                        
+                        <!-- Delete Button -->
+                        <button (click)="confirmRemoveContact(contact, $event)" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 transition-colors shrink-0 z-10">
+                            <app-trash2-icon [size]="18"></app-trash2-icon>
+                        </button>
                     </div>
                 } @empty {
                     <div class="flex flex-col items-center justify-center h-48 opacity-50">
@@ -158,18 +159,18 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
                 <div class="flex flex-col group" [class.items-end]="msg.senderId === user().id" [class.items-start]="msg.senderId !== user().id">
                     
                     @if(msg.type === 'image' && msg.imageUrl) {
-                        <div class="relative group">
+                        <div class="relative group max-w-[70%]">
                             <img [src]="msg.imageUrl" 
-                                class="max-w-[70%] max-h-60 rounded-xl border border-slate-700 object-cover cursor-pointer"
+                                class="w-full h-auto max-h-60 rounded-xl border border-slate-700 object-cover cursor-pointer z-0"
                                 (click)="viewImage.set(msg.imageUrl)"
                             >
-                            <span class="absolute bottom-1 right-2 text-[9px] text-white/80 bg-black/50 px-1 rounded">
+                            <span class="absolute bottom-1 right-2 text-[9px] text-white/80 bg-black/50 px-1 rounded pointer-events-none z-10">
                                 {{ msg.timestamp | date:'shortTime' }}
                             </span>
                             
                             @if(msg.senderId === user().id) {
-                              <button (click)="deleteMessage(msg.id!)" class="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-                                <app-trash2-icon [size]="12"></app-trash2-icon>
+                              <button (click)="deleteMessage($event, msg.id!)" class="absolute top-2 right-2 bg-rose-600 text-white p-2 rounded-full shadow-xl z-50 active:scale-90 transition-transform hover:bg-rose-700 cursor-pointer">
+                                <app-trash2-icon [size]="18"></app-trash2-icon>
                               </button>
                             }
                         </div>
@@ -187,7 +188,7 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
                               {{ msg.text }}
                           </div>
                           @if(msg.senderId === user().id) {
-                            <button (click)="deleteMessage(msg.id!)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button (click)="deleteMessage($event, msg.id!)" class="text-slate-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity">
                               <app-trash2-icon [size]="14"></app-trash2-icon>
                             </button>
                           }
@@ -231,14 +232,43 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
       
       <!-- MODAL: Image View (Lightbox) -->
       @if (viewImage()) {
-          <div class="absolute inset-0 z-[70] bg-black flex flex-col animate-in fade-in duration-200" (click)="viewImage.set(null)">
-              <div class="absolute top-4 right-4 z-[80]">
-                 <button class="bg-black/50 p-2 rounded-full text-white">
-                    <app-x-circle-icon [size]="24"></app-x-circle-icon>
+          <div class="fixed inset-0 z-[200] bg-black flex flex-col animate-in fade-in duration-200">
+              
+              <!-- Header / Close Button -->
+              <div class="absolute top-0 left-0 right-0 p-4 pt-safe flex justify-end z-[210] pointer-events-none" style="padding-top: calc(1rem + env(safe-area-inset-top));">
+                 <button (click)="viewImage.set(null)" class="pointer-events-auto bg-black/40 backdrop-blur-md border border-white/10 p-2 rounded-full text-white active:bg-white/20 transition-colors shadow-lg cursor-pointer">
+                    <app-x-circle-icon [size]="32"></app-x-circle-icon>
                  </button>
               </div>
-              <div class="flex-1 flex items-center justify-center p-2">
-                 <img [src]="viewImage()" class="max-w-full max-h-full object-contain">
+
+              <!-- Scrollable Image Area -->
+              <div class="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center" (click)="viewImage.set(null)">
+                 <!-- Spacer for top bar -->
+                 <div class="w-full h-20 shrink-0"></div>
+                 
+                 <img [src]="viewImage()" 
+                      class="w-full max-w-4xl object-contain shadow-2xl"
+                      (click)="$event.stopPropagation()"
+                 >
+                 
+                 <!-- Spacer for bottom bar -->
+                 <div class="w-full h-32 shrink-0"></div>
+              </div>
+              
+              <!-- Bottom Actions -->
+              <div class="absolute bottom-0 left-0 right-0 p-6 pb-safe bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-center gap-12 z-[210] pointer-events-none" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
+                  <button (click)="downloadImage(viewImage()!)" class="pointer-events-auto flex flex-col items-center gap-2 text-white hover:text-amber-400 transition-colors group cursor-pointer">
+                      <div class="bg-white/10 p-4 rounded-full backdrop-blur-md group-active:bg-white/30 transition-colors border border-white/10 shadow-lg">
+                          <app-download-icon [size]="24"></app-download-icon>
+                      </div>
+                      <span class="text-xs font-bold shadow-black drop-shadow-md">Save</span>
+                  </button>
+                  <button (click)="shareImage(viewImage()!)" class="pointer-events-auto flex flex-col items-center gap-2 text-white hover:text-amber-400 transition-colors group cursor-pointer">
+                      <div class="bg-white/10 p-4 rounded-full backdrop-blur-md group-active:bg-white/30 transition-colors border border-white/10 shadow-lg">
+                          <app-share-icon [size]="24"></app-share-icon>
+                      </div>
+                      <span class="text-xs font-bold shadow-black drop-shadow-md">Share</span>
+                  </button>
               </div>
           </div>
       }
@@ -288,7 +318,7 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
 
       <!-- MODAL: Confirm Delete -->
       @if (contactToDelete()) {
-        <div class="absolute inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+        <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
              <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
                 <h3 class="text-white font-black text-lg mb-2">Remove Contact?</h3>
                 <p class="text-slate-400 text-sm mb-6">Are you sure you want to remove <strong class="text-white">{{ contactToDelete()?.name }}</strong> from your contacts?</p>
@@ -301,33 +331,149 @@ import { Trash2IconComponent } from '../icons/trash2-icon.component';
         </div>
       }
 
+      <!-- MODAL: Confirm Delete Message -->
+      @if (messageToDelete()) {
+        <div class="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+             <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 w-full max-w-sm flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+                <h3 class="text-white font-black text-lg mb-2">Delete Message?</h3>
+                <p class="text-slate-400 text-sm mb-6">This message will be removed for everyone in the chat.</p>
+                
+                <div class="flex gap-3">
+                    <button (click)="messageToDelete.set(null)" class="flex-1 bg-slate-800 text-white py-3 rounded-xl font-bold border border-slate-700 active:bg-slate-700 transition-colors">Cancel</button>
+                    <button (click)="executeDeleteMessage()" class="flex-1 bg-rose-600 text-white py-3 rounded-xl font-bold active:bg-rose-700 transition-colors">Delete</button>
+                </div>
+             </div>
+        </div>
+      }
+
       <!-- MODAL: Calling UI -->
       @if (activeCall()) {
-        <div class="absolute inset-0 z-[100] bg-slate-950 flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
-          <div class="w-32 h-32 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-black text-4xl uppercase mb-8 shadow-2xl animate-pulse">
-            {{ activeCall()?.callerName?.substring(0,2) }}
+        <div class="absolute inset-0 z-[100] bg-[#A99494] flex flex-col animate-in fade-in duration-300 overflow-hidden">
+          
+          <!-- Video Background (if connected and video available) -->
+          <div class="absolute inset-0 z-0">
+             <video #remoteVideo autoplay playsinline class="w-full h-full object-cover opacity-0 transition-opacity duration-500" [class.opacity-100]="activeCall()?.status === 'connected' && remoteStream"></video>
           </div>
           
-          <h2 class="text-2xl font-black text-white mb-2">{{ activeCall()?.callerName }}</h2>
-          <p class="text-amber-500 font-bold uppercase tracking-widest text-xs mb-12">
-            {{ activeCall()?.status === 'ringing' ? (isIncoming() ? 'Incoming Call...' : 'Calling...') : 'Connected' }}
-          </p>
+          <!-- Local Video (PIP) - Only show if camera is on -->
+          @if (isCameraOn && localStream) {
+             <div class="absolute top-20 right-4 w-24 h-32 bg-black/20 rounded-xl overflow-hidden border border-white/20 shadow-xl z-10 backdrop-blur-sm">
+                 <video #localVideo autoplay playsinline muted class="w-full h-full object-cover"></video>
+             </div>
+          }
 
-          <div class="flex gap-8">
-            @if (isIncoming() && activeCall()?.status === 'ringing') {
-              <button (click)="answerCall()" class="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
-                <app-phone-icon [size]="28"></app-phone-icon>
-              </button>
-            }
-            <button (click)="endCall()" class="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
-              <app-phone-icon [size]="28" class="rotate-[135deg]"></app-phone-icon>
-            </button>
+          <!-- UI Overlay -->
+          <div class="relative z-20 flex flex-col h-full">
+              
+              <!-- Top Bar -->
+              <div class="flex justify-between items-center p-4 pt-8 text-white">
+                  <button (click)="endCall()" class="p-2 rounded-full active:bg-white/10 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                  </button>
+                  <div class="flex gap-2">
+                      <button (click)="showFeatureNotAvailable()" class="p-2 rounded-full active:bg-white/10 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+                      </button>
+                      <button (click)="showFeatureNotAvailable()" class="p-2 rounded-full active:bg-white/10 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                      </button>
+                  </div>
+              </div>
+
+              <!-- Center Content -->
+              <div class="flex-1 flex flex-col items-center justify-start pt-16">
+                  <!-- Profile Pic -->
+                  <div class="w-32 h-32 rounded-full overflow-hidden shadow-2xl mb-6 relative border-2 border-white/10">
+                       <div class="w-full h-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white font-black text-4xl uppercase">
+                          {{ activeCall()?.callerName?.substring(0,2) }}
+                       </div>
+                  </div>
+                  
+                  <h2 class="text-3xl font-medium text-white mb-2 tracking-wide">{{ activeCall()?.callerName }}</h2>
+                  <p class="text-white/90 text-lg font-light">
+                    {{ activeCall()?.status === 'ringing' ? (isIncoming() ? 'Incoming call...' : 'Calling...') : (activeCall()?.status === 'connected' ? '00:00' : 'Connecting...') }}
+                  </p>
+              </div>
+
+              <!-- Bottom Controls -->
+              <div class="pb-12 px-6">
+                  
+                  <!-- Incoming Call Actions -->
+                  @if (isIncoming() && activeCall()?.status === 'ringing') {
+                      <div class="flex justify-around items-center mb-8">
+                          <div class="flex flex-col items-center gap-2">
+                              <button (click)="endCall()" class="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform">
+                                  <app-phone-icon [size]="28" class="rotate-[135deg]"></app-phone-icon>
+                              </button>
+                              <span class="text-white text-sm">Decline</span>
+                          </div>
+                          <div class="flex flex-col items-center gap-2">
+                              <button (click)="answerCall()" class="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg active:scale-95 transition-transform animate-bounce">
+                                  <app-phone-icon [size]="28"></app-phone-icon>
+                              </button>
+                              <span class="text-white text-sm">Answer</span>
+                          </div>
+                      </div>
+                  } @else {
+                      <!-- Active/Outgoing Call Controls -->
+                      <div class="flex justify-between items-center max-w-sm mx-auto w-full">
+                          
+                          <!-- Video Toggle -->
+                          <button (click)="toggleCamera()" class="flex flex-col items-center gap-1 group">
+                              <div class="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white group-active:bg-white/20 transition-colors" [class.bg-white]="isCameraOn" [class.text-black]="isCameraOn">
+                                  @if(isCameraOn) {
+                                      <app-video-icon [size]="20"></app-video-icon>
+                                  } @else {
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.777-.416L16 10.934V13Z"/><path d="M14 4.5v15a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                                  }
+                              </div>
+                          </button>
+
+                          <!-- Mute Toggle -->
+                          <button (click)="toggleMic()" class="flex flex-col items-center gap-1 group">
+                              <div class="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white group-active:bg-white/20 transition-colors" [class.bg-white]="!isMicOn" [class.text-black]="!isMicOn">
+                                  @if(isMicOn) {
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                  } @else {
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" x2="22" y1="2" y2="22"/><path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2"/><path d="M5 10v2a7 7 0 0 0 12 5"/><path d="M15 9.34V5a3 3 0 0 0-5.68-1.33"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                                  }
+                              </div>
+                          </button>
+
+                          <!-- Media/Cast -->
+                          <button (click)="toggleScreenShare()" class="flex flex-col items-center gap-1 group">
+                              <div class="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white group-active:bg-white/20 transition-colors" [class.bg-white]="isScreenSharing" [class.text-black]="isScreenSharing">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h20"/><path d="M2 14h20"/><path d="M2 6h20"/><path d="M2 18h20"/></svg>
+                              </div>
+                          </button>
+
+                          <!-- Speaker Toggle -->
+                          <button (click)="toggleSpeaker()" class="flex flex-col items-center gap-1 group">
+                              <div class="w-12 h-12 rounded-full bg-black/20 backdrop-blur-md flex items-center justify-center text-white group-active:bg-white/20 transition-colors" [class.bg-white]="isSpeakerOn" [class.text-black]="isSpeakerOn">
+                                  @if(isSpeakerOn) {
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                                  } @else {
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+                                  }
+                              </div>
+                          </button>
+
+                          <!-- End Call -->
+                          <button (click)="endCall()" class="flex flex-col items-center gap-1 group">
+                              <div class="w-14 h-14 rounded-full bg-rose-500 flex items-center justify-center text-white shadow-lg group-active:scale-95 transition-transform">
+                                  <app-phone-icon [size]="28" class="rotate-[135deg]"></app-phone-icon>
+                              </div>
+                          </button>
+
+                      </div>
+                  }
+              </div>
           </div>
         </div>
       }
     </div>
   `,
-  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent, PhoneIconComponent, VideoIconComponent, Trash2IconComponent],
+  imports: [CommonModule, XCircleIconComponent, UploadIconComponent, PlusIconComponent, BellIconComponent, CheckIconComponent, MessageCircleIconComponent, ImageIconComponent, PhoneIconComponent, VideoIconComponent, Trash2IconComponent, DownloadIconComponent, ShareIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChatComponent implements AfterViewChecked {
@@ -349,13 +495,24 @@ export class ChatComponent implements AfterViewChecked {
   newContactId = signal('');
   viewImage = signal<string | null>(null);
   contactToDelete = signal<ChatContact | null>(null);
+  messageToDelete = signal<string | null>(null);
   
   // Calling
   activeCall = signal<any | null>(null);
   isIncoming = signal(false);
   
+  // WebRTC
+  localStream: MediaStream | null = null;
+  remoteStream: MediaStream | null = null;
+  peerConnection: RTCPeerConnection | null = null;
+  isMicOn = true;
+  isCameraOn = true;
+  pendingCandidates: RTCIceCandidateInit[] = [];
+  
   @ViewChild('scrollContainer') private scrollContainer!: ElementRef;
   @ViewChild('imageInput') imageInput!: ElementRef<HTMLInputElement>;
+  @ViewChild('localVideo') localVideo!: ElementRef<HTMLVideoElement>;
+  @ViewChild('remoteVideo') remoteVideo!: ElementRef<HTMLVideoElement>;
 
   constructor() {
     effect(() => {
@@ -365,11 +522,16 @@ export class ChatComponent implements AfterViewChecked {
             this.chatService.listenToUserData(u.id);
             this.chatService.listenToCalls(u.id, (call) => {
               if (call) {
+                // If we are already in a call, ignore or handle busy
+                if (this.activeCall() && this.activeCall().status === 'connected') return;
+                
                 this.activeCall.set(call);
                 this.isIncoming.set(true);
-              } else if (this.isIncoming()) {
-                this.activeCall.set(null);
-                this.isIncoming.set(false);
+                
+                // If call is ended remotely
+                if (call.status === 'ended') {
+                    this.cleanupCall();
+                }
               }
             });
         }
@@ -406,8 +568,8 @@ export class ChatComponent implements AfterViewChecked {
   }
 
   confirmRemoveContact(contact: ChatContact, event: Event) {
+    console.log('Confirm remove contact clicked', contact);
     event.stopPropagation();
-    event.preventDefault();
     this.contactToDelete.set(contact);
   }
 
@@ -415,6 +577,7 @@ export class ChatComponent implements AfterViewChecked {
     const contact = this.contactToDelete();
     if (!contact) return;
     
+    console.log('Executing remove contact', contact);
     this.contactToDelete.set(null);
     
     // Optimistically remove from UI immediately
@@ -488,7 +651,12 @@ export class ChatComponent implements AfterViewChecked {
               canvas.width = width;
               canvas.height = height;
               const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
+              if (ctx) {
+                  // Fill white background to handle transparency
+                  ctx.fillStyle = '#FFFFFF';
+                  ctx.fillRect(0, 0, width, height);
+                  ctx.drawImage(img, 0, 0, width, height);
+              }
 
               // Compress to JPEG 0.6 quality
               const base64 = canvas.toDataURL('image/jpeg', 0.6);
@@ -504,10 +672,89 @@ export class ChatComponent implements AfterViewChecked {
       reader.readAsDataURL(file);
   }
 
-  async deleteMessage(msgId: string) {
+  async downloadImage(imageUrl: string) {
+    if (!imageUrl) return;
+    try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `photo-${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        console.error('Download failed', err);
+        // Fallback: Open in new tab
+        window.open(imageUrl, '_blank');
+    }
+  }
+
+  async shareImage(imageUrl: string) {
+    if (!imageUrl) return;
+    try {
+        const response = await fetch(imageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: blob.type });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'Shared Photo',
+                text: 'Check out this photo!'
+            });
+        } else {
+            // Fallback for desktop or unsupported browsers
+            this.downloadImage(imageUrl);
+            alert('Sharing not supported on this device. Image saved instead.');
+        }
+    } catch (err) {
+        console.error('Share failed', err);
+        // Fallback: Try to share just the URL or download
+        if (navigator.share) {
+             try {
+                 await navigator.share({
+                    title: 'Shared Photo',
+                    url: imageUrl
+                 });
+             } catch (e) {
+                 this.downloadImage(imageUrl);
+             }
+        } else {
+            this.downloadImage(imageUrl);
+        }
+    }
+  }
+
+  deleteMessage(event: Event, msgId: string) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!msgId) {
+        console.error('Message ID missing');
+        return;
+    }
+
+    this.messageToDelete.set(msgId);
+  }
+
+  async executeDeleteMessage() {
+    const msgId = this.messageToDelete();
+    if (!msgId) return;
+    
     const chat = this.activeChat();
-    if (!chat || !confirm('Delete this message for everyone?')) return;
-    await this.chatService.deleteMessage(chat.chatId, msgId);
+    if (!chat) return;
+    
+    this.messageToDelete.set(null);
+    
+    try {
+        await this.chatService.deleteMessage(chat.chatId, msgId);
+    } catch (err) {
+        console.error('Failed to delete message', err);
+        alert('Could not delete message. Please try again.');
+    }
   }
 
   // --- Calling ---
@@ -526,6 +773,52 @@ export class ChatComponent implements AfterViewChecked {
     });
 
     await this.chatService.sendCallSignal(chat.userId, me.id, me.name, type);
+    
+    // Initialize WebRTC
+    await this.initWebRTC(type === 'video');
+    
+    // Create Offer
+    if (this.peerConnection) {
+        const offer = await this.peerConnection.createOffer();
+        await this.peerConnection.setLocalDescription(offer);
+        
+        // Send Offer via Signal
+        // Path: calls/{targetId}/{callerId} -> calls/{chat.userId}/{me.id}
+        await this.chatService.sendWebRTCSignal(chat.userId, me.id, 'offer', {
+            type: offer.type,
+            sdp: offer.sdp
+        });
+        
+        // Listen for Answer
+        this.chatService.listenToCallSignal(chat.userId, me.id, async (data) => {
+            if (data?.answer && !this.peerConnection?.currentRemoteDescription) {
+                const answer = new RTCSessionDescription(data.answer);
+                await this.peerConnection?.setRemoteDescription(answer);
+                this.activeCall.update(c => ({ ...c, status: 'connected' }));
+                
+                // Process pending candidates
+                while (this.pendingCandidates.length > 0) {
+                    const candidate = this.pendingCandidates.shift();
+                    if (candidate) {
+                        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                }
+            }
+            if (data?.candidates) {
+                const candidates = Object.values(data.candidates);
+                for (const c of candidates) {
+                    if (this.peerConnection?.remoteDescription) {
+                        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(c as any));
+                    } else {
+                        this.pendingCandidates.push(c as any);
+                    }
+                }
+            }
+            if (data?.status === 'ended' || data?.status === 'rejected') {
+                this.cleanupCall();
+            }
+        });
+    }
   }
 
   async answerCall() {
@@ -533,23 +826,240 @@ export class ChatComponent implements AfterViewChecked {
     const me = this.user();
     if (!call || !me) return;
 
-    await this.chatService.updateCallStatus(me.id, call.callerId, 'accepted');
-    // In a real app, we'd start WebRTC here. For now, we just show "Connected"
+    // Determine IDs
+    // I am Callee (me.id), Caller is call.callerId
+    const callerId = call.callerId;
+    const myId = me.id;
+
+    await this.chatService.updateCallStatus(myId, callerId, 'accepted');
+    this.activeCall.update(c => ({ ...c, status: 'connected' }));
+
+    // Initialize WebRTC
+    await this.initWebRTC(call.type === 'video');
+
+    // Listen for Offer first (it should be there)
+    this.chatService.listenToCallSignal(myId, callerId, async (data) => {
+        if (data?.offer && !this.peerConnection?.currentRemoteDescription) {
+             const offer = new RTCSessionDescription(data.offer);
+             await this.peerConnection?.setRemoteDescription(offer);
+             
+             // Process pending candidates
+             while (this.pendingCandidates.length > 0) {
+                 const candidate = this.pendingCandidates.shift();
+                 if (candidate) {
+                     await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+                 }
+             }
+             
+             // Create Answer
+             const answer = await this.peerConnection?.createAnswer();
+             if (answer) {
+                 await this.peerConnection?.setLocalDescription(answer);
+                 // Send Answer
+                 // Path: calls/{myId}/{callerId}
+                 await this.chatService.sendWebRTCSignal(myId, callerId, 'answer', {
+                     type: answer.type,
+                     sdp: answer.sdp
+                 });
+             }
+        }
+        if (data?.candidates) {
+            const candidates = Object.values(data.candidates);
+            for (const c of candidates) {
+                if (this.peerConnection?.remoteDescription) {
+                    await this.peerConnection?.addIceCandidate(new RTCIceCandidate(c as any));
+                } else {
+                    this.pendingCandidates.push(c as any);
+                }
+            }
+        }
+        if (data?.status === 'ended') {
+            this.cleanupCall();
+        }
+    });
+  }
+
+  async initWebRTC(video: boolean) {
+      try {
+          // Try to get media with preferred constraints
+          try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: video ? { facingMode: 'user' } : false, 
+                audio: true 
+            });
+          } catch (err) {
+            console.warn('Preferred media constraints failed, trying fallback...');
+            // Fallback: try without specific facingMode or just audio if video fails
+            if (video) {
+                 try {
+                    this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: true, 
+                        audio: true 
+                    });
+                 } catch (e) {
+                     console.warn('Video failed, falling back to audio only', e);
+                     this.localStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: false, 
+                        audio: true 
+                    });
+                 }
+            } else {
+                throw err;
+            }
+          }
+          
+          if (this.localVideo && this.localVideo.nativeElement) {
+              this.localVideo.nativeElement.srcObject = this.localStream;
+          }
+
+          const config = {
+              iceServers: [
+                  { urls: 'stun:stun.l.google.com:19302' },
+                  { urls: 'stun:stun1.l.google.com:19302' }
+              ]
+          };
+          
+          this.peerConnection = new RTCPeerConnection(config);
+          
+          // Add Tracks
+          this.localStream?.getTracks().forEach(track => {
+              this.peerConnection?.addTrack(track, this.localStream!);
+          });
+          
+          // Handle Remote Stream
+          this.peerConnection.ontrack = (event) => {
+              this.remoteStream = event.streams[0];
+              if (this.remoteVideo && this.remoteVideo.nativeElement) {
+                  this.remoteVideo.nativeElement.srcObject = this.remoteStream;
+              }
+          };
+          
+          // Handle ICE Candidates
+          this.peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                  const me = this.user();
+                  const call = this.activeCall();
+                  if (!me || !call) return;
+                  
+                  // Determine path components
+                  let targetId, callerId;
+                  if (this.isIncoming()) {
+                      // I am Callee (me.id)
+                      targetId = me.id;
+                      callerId = call.callerId;
+                  } else {
+                      // I am Caller (me.id)
+                      targetId = this.activeChat()?.userId;
+                      callerId = me.id;
+                  }
+                  
+                  if (targetId && callerId) {
+                      this.chatService.sendWebRTCSignal(targetId, callerId, 'candidate', event.candidate.toJSON());
+                  }
+              }
+          };
+          
+      } catch (err) {
+          console.error('Error initializing WebRTC', err);
+          alert('Could not access camera/microphone. Please check permissions.');
+          this.endCall();
+      }
   }
 
   async endCall() {
     const call = this.activeCall();
     const me = this.user();
     const chat = this.activeChat();
-    if (!call || !me) return;
-
-    if (this.isIncoming()) {
-      await this.chatService.updateCallStatus(me.id, call.callerId, 'ended');
-    } else if (chat) {
-      await this.chatService.updateCallStatus(chat.userId, me.id, 'ended');
+    
+    if (call && me) {
+        if (this.isIncoming()) {
+            await this.chatService.updateCallStatus(me.id, call.callerId, 'ended');
+        } else if (chat) {
+            await this.chatService.updateCallStatus(chat.userId, me.id, 'ended');
+        }
     }
     
-    this.activeCall.set(null);
+    this.cleanupCall();
+  }
+  
+  cleanupCall() {
+      this.activeCall.set(null);
+      this.isIncoming.set(false);
+      this.pendingCandidates = [];
+      
+      if (this.localStream) {
+          this.localStream.getTracks().forEach(track => track.stop());
+          this.localStream = null;
+      }
+      if (this.peerConnection) {
+          this.peerConnection.close();
+          this.peerConnection = null;
+      }
+      this.remoteStream = null;
+  }
+  
+  toggleMic() {
+      this.isMicOn = !this.isMicOn;
+      if (this.localStream) {
+          this.localStream.getAudioTracks().forEach(track => track.enabled = this.isMicOn);
+      }
+  }
+  
+  toggleCamera() {
+      this.isCameraOn = !this.isCameraOn;
+      if (this.localStream) {
+          this.localStream.getVideoTracks().forEach(track => track.enabled = this.isCameraOn);
+      }
+  }
+
+  isSpeakerOn = true;
+  isScreenSharing = false;
+
+  toggleSpeaker() {
+      this.isSpeakerOn = !this.isSpeakerOn;
+      // Note: Switching output device (earpiece/speaker) is not fully supported in mobile browsers yet.
+      // We can try setSinkId if available, or just toggle state for UI.
+      if (this.remoteVideo && this.remoteVideo.nativeElement && (this.remoteVideo.nativeElement as any).setSinkId) {
+          // This is experimental and might not work
+          // (this.remoteVideo.nativeElement as any).setSinkId(this.isSpeakerOn ? 'speaker' : 'earpiece');
+      }
+  }
+
+  async toggleScreenShare() {
+      if (!this.isScreenSharing) {
+          try {
+              const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+              const screenTrack = stream.getVideoTracks()[0];
+              
+              if (this.peerConnection) {
+                  const sender = this.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+                  if (sender) {
+                      await sender.replaceTrack(screenTrack);
+                      this.isScreenSharing = true;
+                      
+                      // Handle stream end (user clicks "Stop sharing" in browser UI)
+                      screenTrack.onended = () => {
+                          this.stopScreenShare();
+                      };
+                  }
+              }
+          } catch (err) {
+              console.error('Error sharing screen', err);
+          }
+      } else {
+          this.stopScreenShare();
+      }
+  }
+
+  async stopScreenShare() {
+      if (this.peerConnection && this.localStream) {
+          const videoTrack = this.localStream.getVideoTracks()[0];
+          const sender = this.peerConnection.getSenders().find(s => s.track?.kind === 'video');
+          if (sender && videoTrack) {
+              await sender.replaceTrack(videoTrack);
+          }
+      }
+      this.isScreenSharing = false;
   }
 
   // --- Utility ---
@@ -610,6 +1120,10 @@ export class ChatComponent implements AfterViewChecked {
       if(confirm('Reject this request?')) {
           await this.chatService.rejectFriendRequest(me.id, req.senderId);
       }
+  }
+
+  showFeatureNotAvailable() {
+      alert('This feature is coming soon!');
   }
 
   scanQrToAdd() {

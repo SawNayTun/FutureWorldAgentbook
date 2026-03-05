@@ -9,6 +9,7 @@ import { DataService, QuickSet, HistoryItem } from '../../services/data.service'
 import { SaveIconComponent } from '../icons/save-icon.component';
 import { PrinterIconComponent } from '../icons/printer-icon.component';
 import { ShareIconComponent } from '../icons/share-icon.component';
+import { DownloadIconComponent } from '../icons/download-icon.component';
 import { ReceiptComponent } from '../receipt/receipt.component';
 import { GridIconComponent } from '../icons/grid-icon.component';
 import { HistoryIconComponent } from '../icons/history-icon.component';
@@ -31,7 +32,7 @@ import * as QRCode from 'qrcode';
   host: {
     'class': 'flex-1 flex flex-col min-h-0'
   },
-  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ShareIconComponent, ReceiptComponent, GridIconComponent, HistoryIconComponent, MessageCircleIconComponent, XCircleIconComponent]
+  imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ShareIconComponent, DownloadIconComponent, ReceiptComponent, GridIconComponent, HistoryIconComponent, MessageCircleIconComponent, XCircleIconComponent]
 })
 export class CalculatorComponent implements AfterViewInit {
   private dataService = inject(DataService);
@@ -486,6 +487,12 @@ export class CalculatorComponent implements AfterViewInit {
     }, 300);
   }
 
+  previewImage = signal<string | null>(null);
+
+  closePreview() {
+    this.previewImage.set(null);
+  }
+
   async shareAsImage() {
     const base64 = await this.generateReceiptImage();
     if (!base64) return;
@@ -495,7 +502,6 @@ export class CalculatorComponent implements AfterViewInit {
         const file = new File([blob], 'receipt.png', { type: 'image/png' });
         
         // 1. Try Web Share API (Best for mobile)
-        // We skip navigator.canShare check as it's sometimes unreliable on Android Chrome
         if (navigator.share) {
             try {
                 await navigator.share({
@@ -506,13 +512,13 @@ export class CalculatorComponent implements AfterViewInit {
                 this.saveToHistoryAndClear();
                 return;
             } catch (shareErr) {
-                console.warn('Share failed or cancelled, falling back to download', shareErr);
+                console.warn('Share failed or cancelled, falling back to preview', shareErr);
             }
         }
 
-        // 2. Fallback to Download (Most reliable if share fails)
-        // We skip clipboard for images as it's flaky on mobile (user reported paste issues)
-        this.downloadImage(blob);
+        // 2. Fallback to Preview Modal
+        this.previewImage.set(base64);
+        this.saveToHistoryAndClear();
 
     } catch (err) {
         console.error('Image generation failed', err);
@@ -520,29 +526,60 @@ export class CalculatorComponent implements AfterViewInit {
     }
   }
 
-  private downloadImage(blob: Blob) {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `receipt-${Date.now()}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      this.saveToHistoryAndClear();
-      alert('Image downloaded. You can find it in your gallery.');
+  async saveImage(base64: string) {
+    if (!base64) return;
+    try {
+        const blob = await (await fetch(base64)).blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `receipt-${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (err) {
+        console.error('Download failed', err);
+        // Fallback: Open in new tab
+        const win = window.open();
+        if (win) {
+            win.document.write('<img src="' + base64 + '" style="width:100%"/>');
+        } else {
+            alert('Could not save image. Please allow popups.');
+        }
+    }
+  }
+
+  async shareImage(base64: string) {
+    if (!base64) return;
+    try {
+        const blob = await (await fetch(base64)).blob();
+        const file = new File([blob], `receipt-${Date.now()}.png`, { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'Betting Receipt',
+                text: `Receipt from ${this.personalShopName()}`
+            });
+        } else {
+            // Fallback for desktop or unsupported browsers
+            this.saveImage(base64);
+            alert('Sharing not supported on this device. Image saved instead.');
+        }
+    } catch (err) {
+        console.error('Share failed', err);
+        // Fallback: Try to share just the URL or download
+        this.saveImage(base64);
+    }
   }
 
   async downloadReceipt() {
     const base64 = await this.generateReceiptImage();
     if (!base64) return;
-    try {
-        const blob = await (await fetch(base64)).blob();
-        this.downloadImage(blob);
-    } catch (err) {
-        console.error('Download failed', err);
-        alert('Could not download image.');
-    }
+    // Show preview modal for manual save
+    this.previewImage.set(base64);
+    this.saveToHistoryAndClear();
   }
 
   async openSendToChat() {
@@ -729,6 +766,9 @@ export class CalculatorComponent implements AfterViewInit {
     targetSignal.set(restoredItems);
     this.showHistory.set(false);
     this.numRef.nativeElement?.focus();
+    
+    // Remove from history after loading
+    this.dataService.deleteHistoryItem(item.id);
   }
 
   deleteHistoryItem(id: string) {

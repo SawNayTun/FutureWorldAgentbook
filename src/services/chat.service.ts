@@ -168,17 +168,23 @@ export class ChatService {
   async removeContact(myId: string, otherId: string) {
     if (!this.db) return;
     
-    // 1. Remove from local side first (most important)
+    console.log(`Removing contact: ${myId} -> ${otherId}`);
+
+    // 1. Remove from local side
     try {
-      await set(ref(this.db, `users/${myId}/contacts/${otherId}`), null);
+      const myContactRef = ref(this.db, `users/${myId}/contacts/${otherId}`);
+      await remove(myContactRef);
+      console.log('Removed from local contacts');
     } catch (error) {
       console.error('Failed to remove local contact:', error);
-      throw error; // Rethrow so UI can show error
+      throw error;
     }
     
-    // 2. Try to remove from other side (best effort, might fail due to permissions)
+    // 2. Remove from other side
     try {
-      await set(ref(this.db, `users/${otherId}/contacts/${myId}`), null);
+      const otherContactRef = ref(this.db, `users/${otherId}/contacts/${myId}`);
+      await remove(otherContactRef);
+      console.log('Removed from remote contacts');
     } catch (e) {
       console.warn('Could not remove remote contact (ignored):', e);
     }
@@ -272,6 +278,25 @@ export class ChatService {
     }
   }
 
+  async sendWebRTCSignal(targetId: string, callerId: string, type: 'offer' | 'answer' | 'candidate', data: any) {
+    if (!this.db) return;
+    // Path is always calls/targetId/callerId
+    // If I am caller, targetId is the other person.
+    // If I am callee, targetId is ME, callerId is the other person.
+    // WAIT: The path must be consistent.
+    // The call is established at `calls/{calleeId}/{callerId}`.
+    
+    // So we need to know who is the original "callee" (target) and "caller".
+    // I will pass the path components explicitly.
+    const callPath = `calls/${targetId}/${callerId}`;
+    
+    if (type === 'candidate') {
+        await push(ref(this.db, `${callPath}/candidates`), data);
+    } else {
+        await update(ref(this.db, callPath), { [type]: data });
+    }
+  }
+
   listenToCalls(myId: string, callback: (call: any) => void) {
     if (!this.db || !myId) return;
     const callsRef = ref(this.db, `calls/${myId}`);
@@ -287,5 +312,13 @@ export class ChatService {
         callback(null);
       }
     });
+  }
+
+  listenToCallSignal(targetId: string, callerId: string, callback: (data: any) => void) {
+      if (!this.db) return;
+      const callRef = ref(this.db, `calls/${targetId}/${callerId}`);
+      onValue(callRef, (snapshot) => {
+          callback(snapshot.val());
+      });
   }
 }

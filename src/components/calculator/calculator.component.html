@@ -375,3 +375,46 @@
     [currencySymbol]="currency()">
   </app-receipt>
 }
+
+<!-- Preview Modal -->
+@if (previewImage(); as img) {
+  <div class="fixed inset-0 z-[200] bg-black flex flex-col animate-in fade-in duration-200">
+      
+      <!-- Header / Close Button -->
+      <div class="absolute top-0 left-0 right-0 p-4 pt-safe flex justify-end z-[210] pointer-events-none" style="padding-top: calc(1rem + env(safe-area-inset-top));">
+         <button (click)="closePreview()" class="pointer-events-auto bg-black/40 backdrop-blur-md border border-white/10 p-2 rounded-full text-white active:bg-white/20 transition-colors shadow-lg cursor-pointer">
+            <app-x-circle-icon [size]="32"></app-x-circle-icon>
+         </button>
+      </div>
+
+      <!-- Scrollable Image Area -->
+      <div class="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col items-center" (click)="closePreview()">
+         <!-- Spacer for top bar -->
+         <div class="w-full h-20 shrink-0"></div>
+         
+         <img [src]="img" 
+              class="w-full max-w-md object-contain shadow-2xl bg-white"
+              (click)="$event.stopPropagation()"
+         >
+         
+         <!-- Spacer for bottom bar -->
+         <div class="w-full h-40 shrink-0"></div>
+      </div>
+      
+      <!-- Bottom Actions -->
+      <div class="absolute bottom-0 left-0 right-0 p-6 pb-safe bg-gradient-to-t from-black/90 via-black/60 to-transparent flex justify-center gap-12 z-[210] pointer-events-none" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
+          <button (click)="saveImage(img)" class="pointer-events-auto flex flex-col items-center gap-2 text-white hover:text-amber-400 transition-colors group cursor-pointer">
+              <div class="bg-white/10 p-4 rounded-full backdrop-blur-md group-active:bg-white/30 transition-colors border border-white/10 shadow-lg">
+                  <app-download-icon [size]="24"></app-download-icon>
+              </div>
+              <span class="text-xs font-bold shadow-black drop-shadow-md">Save</span>
+          </button>
+          <button (click)="shareImage(img)" class="pointer-events-auto flex flex-col items-center gap-2 text-white hover:text-amber-400 transition-colors group cursor-pointer">
+              <div class="bg-white/10 p-4 rounded-full backdrop-blur-md group-active:bg-white/30 transition-colors border border-white/10 shadow-lg">
+                  <app-share-icon [size]="24"></app-share-icon>
+              </div>
+              <span class="text-xs font-bold shadow-black drop-shadow-md">Share</span>
+          </button>
+      </div>
+  </div>
+}
