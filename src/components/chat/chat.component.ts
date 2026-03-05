@@ -677,6 +677,46 @@ export class ChatComponent implements AfterViewChecked {
     try {
         const response = await fetch(imageUrl);
         const blob = await response.blob();
+
+        // 1. Try File System Access API (Desktop Chrome/Edge)
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: `photo-${Date.now()}.jpg`,
+                    types: [{
+                        description: 'Image file',
+                        accept: { 'image/jpeg': ['.jpg'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            } catch (err: any) {
+                if (err.name !== 'AbortError') {
+                    console.error('File System Access API failed', err);
+                } else {
+                    return; // User cancelled
+                }
+            }
+        }
+
+        // 2. Try Web Share API (Mobile) - often the best way to "save" on mobile
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: blob.type });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Save Photo',
+                    text: 'Save this photo'
+                });
+                return;
+            } catch (shareErr) {
+                console.warn('Share failed, falling back to download', shareErr);
+            }
+        }
+
+        // 3. Fallback: Anchor Tag Download
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -687,7 +727,7 @@ export class ChatComponent implements AfterViewChecked {
         document.body.removeChild(a);
     } catch (err) {
         console.error('Download failed', err);
-        // Fallback: Open in new tab
+        // 4. Final Fallback: Open in new tab
         window.open(imageUrl, '_blank');
     }
   }

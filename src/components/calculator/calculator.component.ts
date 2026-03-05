@@ -530,6 +530,46 @@ export class CalculatorComponent implements AfterViewInit {
     if (!base64) return;
     try {
         const blob = await (await fetch(base64)).blob();
+
+        // 1. Try File System Access API (Desktop Chrome/Edge)
+        if ('showSaveFilePicker' in window) {
+            try {
+                const handle = await (window as any).showSaveFilePicker({
+                    suggestedName: `receipt-${Date.now()}.png`,
+                    types: [{
+                        description: 'Receipt Image',
+                        accept: { 'image/png': ['.png'] },
+                    }],
+                });
+                const writable = await handle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            } catch (err: any) {
+                if (err.name !== 'AbortError') {
+                    console.error('File System Access API failed', err);
+                } else {
+                    return; // User cancelled
+                }
+            }
+        }
+
+        // 2. Try Web Share API (Mobile) - often the best way to "save" on mobile
+        const file = new File([blob], `receipt-${Date.now()}.png`, { type: 'image/png' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Save Receipt',
+                    text: 'Save this receipt'
+                });
+                return;
+            } catch (shareErr) {
+                console.warn('Share failed, falling back to download', shareErr);
+            }
+        }
+
+        // 3. Fallback: Anchor Tag Download
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -540,7 +580,7 @@ export class CalculatorComponent implements AfterViewInit {
         document.body.removeChild(a);
     } catch (err) {
         console.error('Download failed', err);
-        // Fallback: Open in new tab
+        // 4. Final Fallback: Open in new tab
         const win = window.open();
         if (win) {
             win.document.write('<img src="' + base64 + '" style="width:100%"/>');
