@@ -50,11 +50,19 @@ export class ScannerComponent implements OnDestroy {
     }, 3000);
 
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment' 
-        } 
-      });
+      // Try environment camera first
+      try {
+        this.stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+      } catch (err: any) {
+        // If environment camera fails (not found or not supported), try any video source
+        if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.message?.includes('device not found')) {
+           this.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        } else {
+           throw err; // Rethrow other errors (like PermissionDenied)
+        }
+      }
       
       clearTimeout(timeoutId);
       this.hasPermission.set(true);
@@ -66,7 +74,11 @@ export class ScannerComponent implements OnDestroy {
       }, 100); 
     } catch (err) {
       clearTimeout(timeoutId);
-      console.error('Error accessing camera:', err);
+      // Only log actual errors, not "device not found" which is common on desktops/simulators
+      const msg = (err as any)?.message || '';
+      if (!msg.includes('device not found') && (err as any)?.name !== 'NotFoundError') {
+          console.error('Error accessing camera:', err);
+      }
       this.hasPermission.set(false);
     }
   }
@@ -324,6 +336,7 @@ export class ScannerComponent implements OnDestroy {
         });
       } catch (err) {
         console.error('Share failed', err);
+        this.copyText(); // Fallback to copy if share fails (e.g. user cancelled or not supported)
       }
     } else {
       this.copyText(); 

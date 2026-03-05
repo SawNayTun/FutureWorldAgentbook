@@ -22,10 +22,15 @@ export interface DataItem {
   a: number;
 }
 
+import * as QRCode from 'qrcode';
+
 @Component({
   selector: 'app-calculator',
   templateUrl: './calculator.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    'class': 'flex-1 flex flex-col min-h-0'
+  },
   imports: [CommonModule, Edit3IconComponent, EraserIconComponent, CalculatorIconComponent, Trash2IconComponent, CopyIconComponent, SaveIconComponent, PrinterIconComponent, ShareIconComponent, ReceiptComponent, GridIconComponent, HistoryIconComponent, MessageCircleIconComponent, XCircleIconComponent]
 })
 export class CalculatorComponent implements AfterViewInit {
@@ -417,8 +422,8 @@ export class CalculatorComponent implements AfterViewInit {
       return [...new Set(results)];
   }
 
-  async copyAndClear() {
-    if (this.dataList().length === 0) return;
+  // Helper to generate receipt text
+  private generateReceiptText(): string {
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-GB'); 
     const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -427,6 +432,12 @@ export class CalculatorComponent implements AfterViewInit {
     let text = `--- ${this.personalShopName()} ---\nနေ့စွဲ - ${dateStr} (${timeStr})\n\n`;
     this.dataList().forEach(item => { text += `${item.n} = ${item.a}\n`; });
     text += `----------\nစုစုပေါင်း: (${this.totalCount()}) ကွက် - ${this.totalAmount()} ${symbol}`;
+    return text;
+  }
+
+  async copyAndClear() {
+    if (this.dataList().length === 0) return;
+    const text = this.generateReceiptText();
     
     try {
         await navigator.clipboard.writeText(text);
@@ -479,28 +490,54 @@ export class CalculatorComponent implements AfterViewInit {
     const base64 = await this.generateReceiptImage();
     if (!base64) return;
 
-    const blob = await (await fetch(base64)).blob();
-    const file = new File([blob], 'receipt.png', { type: 'image/png' });
-    
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                files: [file],
-                title: 'Betting Receipt',
-                text: `Receipt from ${this.personalShopName()}`
-            });
-            // Clear after sharing
-            this.saveToHistoryAndClear();
-        } catch (err) {
-            console.log('Share failed');
+    try {
+        const blob = await (await fetch(base64)).blob();
+        const file = new File([blob], 'receipt.png', { type: 'image/png' });
+        
+        // Try Web Share API first (Best for mobile gallery saving)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Betting Receipt',
+                    text: `Receipt from ${this.personalShopName()}`
+                });
+                this.saveToHistoryAndClear();
+                return;
+            } catch (shareErr) {
+                console.warn('Share failed or cancelled, falling back to clipboard/download', shareErr);
+            }
         }
-    } else {
+
+        // Fallback to Clipboard
+        try {
+            if (typeof ClipboardItem !== 'undefined') {
+                const item = new ClipboardItem({ [blob.type]: blob });
+                await navigator.clipboard.write([item]);
+                alert('Image copied to clipboard! You can paste it now.');
+                this.saveToHistoryAndClear();
+                return;
+            }
+        } catch (clipboardErr) {
+            console.warn('Clipboard write failed', clipboardErr);
+        }
+
+        // Final Fallback: Download
+        console.log('Falling back to download');
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = base64;
-        a.download = 'receipt.png';
+        a.href = url;
+        a.download = `receipt-${Date.now()}.png`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
         this.saveToHistoryAndClear();
-        alert('Image saved to gallery');
+        alert('Image downloaded to your device.');
+
+    } catch (err) {
+        console.error('Image generation failed', err);
+        alert('Could not generate image.');
     }
   }
 
@@ -580,14 +617,17 @@ export class CalculatorComponent implements AfterViewInit {
     ctx.fillStyle = '#333333';
     ctx.fillText(`နေ့စွဲ: ${dateStr}`, width / 2, 85);
 
-    // QR Code Placeholder (Top Right)
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(width - 110, 20, 90, 90);
-    ctx.font = 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('QR CODE', width - 65, 70);
-    ctx.textAlign = 'left'; // Reset
+    // Real QR Code (Top Right)
+    try {
+        const qrText = this.generateReceiptText();
+        const qrDataUrl = await QRCode.toDataURL(qrText, { margin: 0, width: 90 });
+        const qrImage = new Image();
+        qrImage.src = qrDataUrl;
+        await new Promise((resolve) => { qrImage.onload = resolve; });
+        ctx.drawImage(qrImage, width - 110, 20, 90, 90);
+    } catch (e) {
+        console.error('QR Gen Error', e);
+    }
 
     // Divider
     ctx.beginPath();
@@ -614,7 +654,7 @@ export class CalculatorComponent implements AfterViewInit {
         ctx.restore();
 
         // Amount (Right aligned)
-        const amtStr = `${item.a.toLocaleString()} ${symbol}`;
+        const amtStr = `${item.a.toLocaleString()}`;
         const amtWidth = ctx.measureText(amtStr).width;
         ctx.fillText(amtStr, width - padding - amtWidth - 10, y);
         y += lineHeight;
