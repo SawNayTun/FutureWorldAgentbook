@@ -41,7 +41,6 @@ export class CalculatorComponent implements AfterViewInit {
   defaultShopName = input.required<string>();
 
   @ViewChild('numRef') numRef!: ElementRef<HTMLInputElement>;
-  @ViewChild('amtRef') amtRef!: ElementRef<HTMLInputElement>;
   
   numInput2D = signal('');
   numInput3D = signal('');
@@ -183,8 +182,18 @@ export class CalculatorComponent implements AfterViewInit {
 
   private processEntry(nInVal: string, aInVal: string) {
     let finalData: DataItem[] = [];
-    const nIn = nInVal.trim();
-    const aIn = aInVal.trim();
+    let nIn = nInVal.trim();
+    let aIn = aInVal.trim();
+
+    // If amount is empty, try to parse from number input (e.g. 12.500)
+    if (!aIn && nIn.includes('.')) {
+        const parts = nIn.split('.');
+        if (parts.length >= 2) {
+            nIn = parts[0];
+            aIn = parts.slice(1).join('.');
+        }
+    }
+
     if (!aIn) return;
 
     // Handle Split Amount (e.g. 500.200)
@@ -401,7 +410,7 @@ export class CalculatorComponent implements AfterViewInit {
         if (this.chips().length > 0) {
             this.quickAmtRef?.nativeElement?.focus();
         } else {
-            this.amtRef.nativeElement?.focus();
+            this.numRef.nativeElement?.focus();
         }
     }, 50);
   }
@@ -849,7 +858,7 @@ export class CalculatorComponent implements AfterViewInit {
 
   loadQuickSet(set: QuickSet) {
     this.chips.set(set.numbers);
-    this.amtRef.nativeElement?.focus();
+    setTimeout(() => this.quickAmtRef?.nativeElement?.focus(), 50);
   }
 
   deleteQuickSet(setName: string) {
